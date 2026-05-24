@@ -1,7 +1,7 @@
 # Selected work
 
 A small portfolio of interface explorations and tools.
-Live site: **https://&lt;username&gt;.github.io/portfolio/** *(fill in after first push)*
+Live site: **https://vishnumadhavan2141.github.io/VibeCoding-Portfolio/**
 
 ## Projects
 
