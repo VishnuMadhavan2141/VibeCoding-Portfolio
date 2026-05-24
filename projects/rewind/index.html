@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#231c14">
+<title>REWIND — your screenshot movie shelf</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:        oklch(0.165 0.018 56);
+    --bg-2:      oklch(0.215 0.019 58);
+    --bg-3:      oklch(0.262 0.021 56);
+    --shelf:     oklch(0.30 0.028 52);
+    --shelf-lo:  oklch(0.165 0.022 44);
+    --ink:       oklch(0.935 0.012 82);
+    --ink-dim:   oklch(0.715 0.020 76);
+    --ink-faint: oklch(0.545 0.022 70);
+    --accent:    oklch(0.805 0.142 74);
+    --accent-lo: oklch(0.66 0.155 58);
+    --stamp:     oklch(0.585 0.175 30);
+    --plastic:   oklch(0.238 0.012 58);
+    --plastic-hi:oklch(0.345 0.014 64);
+    --plastic-lo:oklch(0.142 0.010 52);
+    --line:      oklch(0.345 0.016 60);
+    --shadow:    oklch(0.10 0.018 48 / 0.72);
+  }
+
+  *{ box-sizing:border-box; margin:0; padding:0; }
+
+  html,body{ height:100%; }
+
+  body{
+    background:
+      radial-gradient(120% 60% at 50% -8%, oklch(0.30 0.05 70 / 0.55), transparent 60%),
+      var(--bg);
+    color:var(--ink);
+    font-family:"Inter", -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+    overflow-x:hidden;
+  }
+
+  /* ambient room: vignette + faint film grain */
+  .ambient{
+    position:fixed; inset:0; pointer-events:none; z-index:60;
+  }
+  .ambient::before{
+    content:""; position:absolute; inset:0;
+    background:radial-gradient(125% 90% at 50% 32%, transparent 52%, var(--shelf-lo) 100%);
+    opacity:0.92;
+  }
+  .ambient::after{
+    content:""; position:absolute; inset:0;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.82' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity:0.038; mix-blend-mode:overlay;
+  }
+
+  .wrap{ max-width:1180px; margin:0 auto; padding:0 clamp(20px,4.4vw,56px); }
+
+  /* ---------- header ---------- */
+  header{ padding:clamp(40px,7vw,76px) 0 26px; }
+
+  .wordmark{
+    font-family:"Anton", sans-serif;
+    font-size:clamp(46px,9vw,92px);
+    line-height:0.92;
+    letter-spacing:0.012em;
+    display:flex; align-items:baseline; gap:0.16em;
+  }
+  .wordmark .rw{ color:var(--accent); }
+  .wordmark .rw span{ display:inline-block; transform:scaleX(-1); }
+
+  .tagline{
+    margin-top:16px;
+    max-width:50ch;
+    color:var(--ink-dim);
+    font-size:15px;
+    line-height:1.55;
+  }
+  .tagline b{ color:var(--ink); font-weight:600; }
+
+  .rule{
+    margin-top:26px; height:0;
+    border-top:1px solid var(--line);
+    box-shadow:0 1px 0 oklch(0.10 0.02 48 / 0.6);
+  }
+
+  /* ---------- filter bar ---------- */
+  .filterbar{
+    position:sticky; top:0; z-index:40;
+    background:linear-gradient(var(--bg) 72%, transparent);
+    padding:16px 0 18px;
+  }
+  .filterbar .wrap{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:18px; flex-wrap:wrap;
+  }
+
+  .segmented{
+    display:inline-flex; gap:3px;
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:13px;
+    padding:4px;
+  }
+  .seg{
+    appearance:none; border:0; cursor:pointer;
+    font-family:inherit; font-size:12.5px; font-weight:600;
+    letter-spacing:0.04em; text-transform:uppercase;
+    color:var(--ink-dim);
+    background:transparent;
+    padding:9px 15px; border-radius:9px;
+    display:flex; align-items:center; gap:8px;
+    white-space:nowrap;
+    transition:color .16s ease, background-color .16s ease;
+  }
+  .seg:hover{ color:var(--ink); }
+  .seg .count{
+    font-family:"Space Mono", monospace; font-weight:700;
+    font-size:11px;
+    background:oklch(0.32 0.02 60); color:var(--ink-dim);
+    padding:1px 7px; border-radius:999px;
+    transition:background-color .16s ease, color .16s ease;
+  }
+  .seg[aria-pressed="true"]{
+    background:var(--accent);
+    color:oklch(0.20 0.04 60);
+  }
+  .seg[aria-pressed="true"] .count{
+    background:oklch(0.20 0.04 60 / 0.22);
+    color:oklch(0.22 0.05 60);
+  }
+  .seg:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .shelfnote{
+    font-family:"Space Mono", monospace;
+    font-size:11.5px; letter-spacing:0.04em;
+    color:var(--ink-faint); text-transform:uppercase;
+  }
+
+  /* ---------- scan room ---------- */
+  .scanroom{ padding:6px 0 4px; }
+  .scanroom__head{
+    display:flex; align-items:flex-end; justify-content:space-between;
+    gap:18px; flex-wrap:wrap; margin-bottom:14px;
+  }
+  .scanroom__title{
+    font-family:"Anton", sans-serif; font-weight:400;
+    font-size:1.55rem; letter-spacing:0.02em;
+  }
+  .scanroom__sub{
+    margin-top:5px; max-width:58ch;
+    font-size:13.5px; line-height:1.5; color:var(--ink-dim);
+  }
+  .scan-status{
+    font-family:"Space Mono", monospace;
+    font-size:11.5px; letter-spacing:0.03em; color:var(--accent);
+    opacity:0; transform:translateY(3px);
+    transition:opacity .2s ease, transform .2s ease;
+  }
+  .scan-status.show{ opacity:1; transform:translateY(0); }
+
+  .scanpanel{
+    background:var(--bg-2);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:18px;
+  }
+
+  .dropzone{
+    border:2px dashed var(--line);
+    border-radius:10px;
+    padding:30px 24px;
+    display:flex; flex-direction:column; align-items:center; gap:9px;
+    text-align:center;
+    transition:border-color .15s ease, background-color .15s ease;
+  }
+  .dropzone.is-dragover{
+    border-color:var(--accent);
+    background:oklch(0.30 0.05 72 / 0.16);
+  }
+  .dropzone--mini{ padding:14px; gap:0; }
+  .dropzone__icon{
+    width:54px; height:38px;
+    border:2px dashed var(--line); border-radius:8px;
+    display:grid; place-items:center;
+    font-size:19px; color:var(--ink-faint);
+  }
+  .dropzone__lead{ font-size:15px; font-weight:600; color:var(--ink); }
+  .dropzone__hint{
+    font-size:12.5px; line-height:1.5; color:var(--ink-faint);
+    max-width:46ch;
+  }
+
+  .scanbtn{
+    appearance:none; cursor:pointer;
+    font-family:"Inter", sans-serif; font-size:12.5px; font-weight:600;
+    letter-spacing:0.03em;
+    padding:9px 16px; border-radius:9px;
+    border:1px solid transparent;
+    transition:background-color .15s ease, border-color .15s ease, color .15s ease, transform .1s ease;
+  }
+  .scanbtn:active{ transform:scale(0.97); }
+  .scanbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+  .scanbtn--primary{ background:var(--accent); color:oklch(0.20 0.04 60); }
+  .scanbtn--primary:hover{ background:oklch(0.85 0.14 76); }
+  .scanbtn--ghost{
+    background:transparent; border-color:var(--line); color:var(--ink-dim);
+  }
+  .scanbtn--ghost:hover{ color:var(--ink); border-color:var(--ink-faint); }
+
+  .scanbar{
+    display:flex; align-items:center; justify-content:space-between;
+    gap:12px; flex-wrap:wrap; margin-top:14px;
+  }
+  .scanbar__count{
+    font-family:"Space Mono", monospace; font-size:11.5px;
+    letter-spacing:0.04em; text-transform:uppercase; color:var(--ink-faint);
+  }
+  .scanbar__btns{ display:flex; gap:8px; flex-wrap:wrap; }
+
+  .thumbstrip{ display:flex; flex-wrap:wrap; gap:8px; }
+  .thumb{
+    position:relative; width:78px; height:78px;
+    border-radius:7px; overflow:hidden;
+    border:1px solid var(--line); background:var(--bg-3);
+  }
+  .thumb img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .thumb__x{
+    position:absolute; top:3px; right:3px;
+    width:19px; height:19px; border-radius:50%;
+    appearance:none; cursor:pointer; border:0;
+    background:oklch(0.12 0.01 50 / 0.86); color:var(--ink);
+    font-size:9px; line-height:1;
+    display:grid; place-items:center;
+  }
+  .thumb__x:hover{ background:var(--stamp); }
+  .thumb__x:focus-visible{ outline:2px solid var(--accent); outline-offset:1px; }
+
+  .analyzing{
+    display:flex; flex-direction:column; align-items:center; gap:14px;
+    padding:26px 20px;
+  }
+  .analyzing__reel{
+    width:46px; height:46px; border-radius:50%;
+    background:repeating-conic-gradient(from 15deg,
+      oklch(0.64 0.013 74) 0 30deg, oklch(0.38 0.010 70) 30deg 60deg);
+    box-shadow:inset 0 0 0 3px oklch(0.23 0.01 60), 0 1px 3px oklch(0 0 0 / 0.6);
+    display:grid; place-items:center;
+    animation:scan-spin 1.5s linear infinite;
+  }
+  .analyzing__hub{
+    width:36%; height:36%; border-radius:50%;
+    background:radial-gradient(oklch(0.34 0.012 60), oklch(0.24 0.01 58));
+  }
+  @keyframes scan-spin{ to{ transform:rotate(1turn); } }
+  .analyzing__line{
+    font-family:"Space Mono", monospace; font-size:12px;
+    letter-spacing:0.03em; color:var(--ink-dim);
+  }
+  .analyzing__bar{
+    width:min(340px, 100%); height:6px;
+    background:var(--bg-3); border-radius:999px; overflow:hidden;
+  }
+  .analyzing__fill{
+    height:100%; width:0; border-radius:999px;
+    background:var(--accent);
+    transition:width .12s linear;
+  }
+
+  .reviewhead__lead{
+    font-size:13.5px; color:var(--ink-dim); margin-bottom:14px;
+  }
+  .reviewgrid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(196px,1fr));
+    gap:16px;
+  }
+  .reviewitem{ display:flex; flex-direction:column; gap:8px; }
+  .reviewitem .tape--mini{ transition:opacity .15s ease, filter .15s ease; }
+  .reviewitem.is-excluded .tape--mini{ opacity:0.38; filter:grayscale(0.55); }
+  .reviewtoggle{
+    appearance:none; cursor:pointer;
+    font-family:"Space Mono", monospace; font-size:10.5px; font-weight:700;
+    letter-spacing:0.08em; text-transform:uppercase;
+    padding:7px 10px; border-radius:7px;
+    border:1px solid var(--accent); background:transparent; color:var(--accent);
+    transition:border-color .15s ease, color .15s ease;
+  }
+  .reviewtoggle[aria-pressed="false"]{
+    border-color:var(--line); color:var(--ink-faint);
+  }
+  .reviewtoggle:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .tape--mini{ cursor:default; }
+  .tape--mini::after{ display:none; }
+  .tape--mini .tape__body{ margin-bottom:0; }
+  .tape--mini:hover .tape__body,
+  .tape--mini:focus-visible .tape__body{ transform:none; }
+
+  /* ---------- shelf grid ---------- */
+  main{ padding-bottom:120px; }
+  .grid{
+    margin-top:30px;
+    position:relative;
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(288px,1fr));
+    column-gap:16px; row-gap:62px;
+  }
+
+  /* ---------- the tape ---------- */
+  .tape{
+    appearance:none; border:0; background:transparent;
+    font-family:inherit; color:inherit; text-align:left;
+    cursor:grab; padding:0;
+    user-select:none; -webkit-user-select:none;
+    position:relative;
+    perspective:900px;
+    display:flex; flex-direction:column;
+  }
+  /* shelf ledge — overlaps neighbours to read as one continuous shelf */
+  .tape::after{
+    content:""; position:absolute; left:-8px; right:-8px; bottom:0;
+    height:13px; border-radius:2px;
+    background:linear-gradient(180deg, var(--shelf) 0%, oklch(0.21 0.024 46) 100%);
+    box-shadow:
+      inset 0 1px 0 oklch(0.44 0.035 64),
+      inset 0 -2px 4px oklch(0.10 0.02 44),
+      0 16px 26px -12px var(--shadow);
+  }
+
+  .tape__body{
+    position:relative;
+    aspect-ratio:1.58;
+    margin-bottom:13px;
+    border-radius:12px;
+    background:
+      linear-gradient(159deg, var(--plastic-hi) 0%, var(--plastic) 36%, var(--plastic-lo) 100%);
+    box-shadow:
+      inset 0 2px 0 oklch(0.48 0.02 66 / 0.72),
+      inset 0 -3px 7px oklch(0.07 0.01 48 / 0.85),
+      inset 2.5px 0 4px oklch(0.07 0.01 48 / 0.42),
+      inset -2.5px 0 4px oklch(0.07 0.01 48 / 0.42),
+      0 22px 30px -16px var(--shadow),
+      0 3px 7px oklch(0.07 0.01 48 / 0.55);
+    padding:15px 15px 0;
+    display:flex; flex-direction:column;
+    transform-origin:bottom center;
+    transition:transform .24s cubic-bezier(.22,1,.36,1), box-shadow .24s ease, filter .2s ease;
+    overflow:hidden;
+  }
+
+  .tape:hover .tape__body,
+  .tape:focus-visible .tape__body{
+    transform:translateY(-13px) rotateX(5deg);
+    box-shadow:
+      inset 0 1.5px 0 oklch(0.46 0.02 66 / 0.7),
+      inset 0 -3px 6px oklch(0.08 0.01 48 / 0.8),
+      0 34px 38px -18px var(--shadow),
+      0 6px 12px oklch(0.08 0.01 48 / 0.55);
+  }
+  .tape:focus-visible{ outline:none; }
+  .tape:focus-visible .tape__body{ outline:2.5px solid var(--accent); outline-offset:3px; }
+
+  /* the title label */
+  .tape__label{
+    flex:1 1 57%;
+    position:relative;
+    border-radius:4px;
+    background:
+      linear-gradient(180deg, oklch(1 0 0 / 0.16), transparent 28%),
+      var(--label);
+    box-shadow:
+      0 1px 3px oklch(0.07 0.01 48 / 0.55),
+      inset 0 0 0 1px oklch(1 0 0 / 0.07);
+    padding:14px 15px;
+    display:flex; flex-direction:column; justify-content:center;
+    transform:rotate(var(--tilt));
+    overflow:hidden;
+  }
+  .tape__label::before{
+    content:""; position:absolute; inset:5px;
+    border:1px solid oklch(1 0 0 / 0.16);
+    border-radius:2px; pointer-events:none;
+  }
+  .tape__label::after{
+    content:""; position:absolute; left:0; right:0; bottom:0; height:42%;
+    background:linear-gradient(transparent, oklch(0 0 0 / 0.16));
+    pointer-events:none;
+  }
+  .tape__title{
+    font-family:"Anton", sans-serif;
+    font-size:1.52rem; line-height:0.92;
+    letter-spacing:0.012em;
+    text-transform:uppercase;
+    word-break:break-word;
+  }
+  .tape__genre{
+    margin-top:7px;
+    font-family:"Space Mono", monospace;
+    font-size:9.5px; font-weight:700;
+    letter-spacing:0.13em; text-transform:uppercase;
+    opacity:0.74;
+  }
+  .tape__label[data-ink="dark"]{ color:oklch(0.20 0.03 52); }
+  .tape__label[data-ink="light"]{ color:oklch(0.96 0.018 92); }
+
+  /* the deck: reel viewport above the front-loading flap */
+  .tape__deck{
+    flex:1 1 43%;
+    margin-top:12px;
+    display:flex; flex-direction:column;
+  }
+  .tape__viewport{
+    flex:1 1 auto;
+    position:relative;
+    border-radius:5px 5px 0 0;
+    background:
+      linear-gradient(122deg, oklch(1 0 0 / 0.07) 0 14%, transparent 36%),
+      linear-gradient(180deg, oklch(0.085 0.008 50), oklch(0.045 0.006 48));
+    box-shadow:
+      inset 0 3px 7px oklch(0 0 0 / 0.92),
+      inset 0 0 0 1px oklch(0.03 0 0 / 0.85);
+    display:flex; align-items:center; justify-content:center;
+    gap:18%;
+    overflow:hidden;
+  }
+  .reel{
+    position:relative;
+    width:25%; aspect-ratio:1;
+    border-radius:50%;
+    display:grid; place-items:center;
+    box-shadow:0 0 0 2px oklch(0.04 0 0 / 0.55);
+  }
+  .reel__tape{
+    position:absolute; inset:0;
+    border-radius:50%;
+    background:
+      repeating-radial-gradient(circle at 50% 50%,
+        oklch(0.155 0.012 48) 0 3px,
+        oklch(0.225 0.014 50) 3px 5.5px);
+    box-shadow:0 0 7px oklch(0 0 0 / 0.7), inset 0 0 10px oklch(0 0 0 / 0.6);
+    transform:scale(var(--fill,0.9));
+    transition:transform .6s cubic-bezier(.3,.9,.3,1);
+  }
+  .reel__hub{
+    position:relative; z-index:1;
+    width:54%; aspect-ratio:1; border-radius:50%;
+    background:
+      repeating-conic-gradient(from 15deg,
+        oklch(0.64 0.013 74) 0 30deg,
+        oklch(0.38 0.010 70) 30deg 60deg);
+    box-shadow:
+      inset 0 0 0 3px oklch(0.23 0.01 60),
+      0 1px 3px oklch(0 0 0 / 0.8);
+  }
+  .reel__hub::after{
+    content:""; position:absolute; inset:33%;
+    border-radius:50%;
+    background:radial-gradient(oklch(0.34 0.012 60), oklch(0.24 0.01 58));
+    box-shadow:inset 0 1px 3px oklch(0 0 0 / 0.85);
+  }
+
+  .tape.winding .reel{ animation:spin .7s cubic-bezier(.3,.85,.35,1); }
+  @keyframes spin{ to{ transform:rotate(2turn); } }
+
+  /* the front-loading flap */
+  .tape__flap{
+    flex:0 0 24px;
+    position:relative;
+    border-radius:0 0 6px 6px;
+    background:
+      linear-gradient(180deg,
+        oklch(0.31 0.013 62) 0%,
+        oklch(0.225 0.011 58) 18%,
+        oklch(0.155 0.010 54) 100%);
+    box-shadow:
+      inset 0 2px 0 oklch(0.46 0.02 66 / 0.6),
+      inset 0 -3px 6px oklch(0 0 0 / 0.6);
+    display:flex; align-items:center; justify-content:center;
+  }
+  .tape__flap::before, .tape__flap::after{
+    content:""; position:absolute; bottom:4px;
+    width:6px; height:6px; border-radius:50%;
+    background:oklch(0.09 0.008 48);
+    box-shadow:inset 0 1px 2px oklch(0 0 0 / 0.95),
+               0 1px 0 oklch(0.42 0.02 64 / 0.4);
+  }
+  .tape__flap::before{ left:13%; }
+  .tape__flap::after{ right:13%; }
+  .tape__brand{
+    font-family:"Space Mono", monospace;
+    font-size:8px; font-weight:700;
+    letter-spacing:0.18em; text-transform:uppercase;
+    color:oklch(0.55 0.013 66);
+    text-shadow:0 1px 0 oklch(0 0 0 / 0.5);
+  }
+
+  /* watched treatment */
+  .tape[data-watched="true"] .tape__body{ filter:saturate(0.82) brightness(0.93); }
+  .tape__stamp{
+    position:absolute; top:50%; left:50%;
+    transform:translate(-50%,-50%) rotate(-13deg);
+    font-family:"Anton", sans-serif;
+    font-size:1.34rem; letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--stamp);
+    border:3px solid var(--stamp);
+    border-radius:6px;
+    padding:3px 13px 1px;
+    opacity:0; transition:opacity .2s ease;
+    box-shadow:0 0 0 2px oklch(0.16 0.02 50 / 0.4) inset;
+    text-shadow:0 1px 0 oklch(0.16 0.02 50 / 0.5);
+  }
+  .tape[data-watched="true"] .tape__stamp{ opacity:0.9; }
+
+  @keyframes tape-in{
+    from{ opacity:0; transform:translateY(16px); }
+    to{ opacity:1; transform:translateY(0); }
+  }
+
+  /* drag to reorder */
+  .grid.is-dragging{ cursor:grabbing; }
+  .grid.is-dragging .tape:not(.is-lifted):hover .tape__body{ transform:none; }
+  .tape.is-lifted{ z-index:50; }
+  .tape.is-lifted::after{ opacity:0; }
+  .tape.is-lifted .tape__body{
+    transform:scale(1.055) rotate(-2.4deg);
+    transition:none;
+    box-shadow:
+      inset 0 1.5px 0 oklch(0.46 0.02 66 / 0.7),
+      inset 0 -3px 6px oklch(0.08 0.01 48 / 0.8),
+      0 44px 54px -20px var(--shadow),
+      0 14px 26px oklch(0.08 0.01 48 / 0.6);
+  }
+  /* where the tape will drop */
+  .drop-caret{
+    position:absolute;
+    width:4px;
+    border-radius:3px;
+    background:var(--accent);
+    box-shadow:0 0 14px var(--accent), 0 0 5px var(--accent);
+    opacity:0; pointer-events:none;
+    z-index:30;
+    transition:opacity .14s ease,
+               left .13s cubic-bezier(.22,1,.36,1),
+               top .13s cubic-bezier(.22,1,.36,1),
+               height .13s ease;
+  }
+  .drop-caret.show{ opacity:1; }
+  .drop-caret::before, .drop-caret::after{
+    content:""; position:absolute; left:50%;
+    width:9px; height:9px; border-radius:2px;
+    background:var(--accent);
+    transform:translateX(-50%) rotate(45deg);
+  }
+  .drop-caret::before{ top:-4px; }
+  .drop-caret::after{ bottom:-4px; }
+
+  /* ---------- empty state ---------- */
+  .empty{
+    grid-column:1/-1;
+    text-align:center;
+    padding:64px 20px 40px;
+  }
+  .empty__icon{
+    width:88px; height:62px; margin:0 auto 22px;
+    border:2.5px dashed var(--line); border-radius:9px;
+    display:grid; place-items:center;
+  }
+  .empty__icon span{
+    font-family:"Space Mono",monospace; font-size:10px; font-weight:700;
+    letter-spacing:0.18em; color:var(--ink-faint);
+  }
+  .empty h2{
+    font-family:"Anton",sans-serif; font-size:1.5rem;
+    letter-spacing:0.02em; font-weight:400;
+  }
+  .empty p{ margin-top:8px; color:var(--ink-dim); font-size:14px; }
+
+  /* ---------- detail drawer ---------- */
+  .scrim{
+    position:fixed; inset:0; z-index:70;
+    background:oklch(0.09 0.015 48 / 0.62);
+    opacity:0; pointer-events:none;
+    transition:opacity .26s ease;
+  }
+  .scrim.open{ opacity:1; pointer-events:auto; }
+
+  .drawer{
+    position:fixed; top:0; right:0; bottom:0; z-index:80;
+    width:min(452px, 100vw);
+    background:var(--bg-2);
+    border-left:1px solid var(--line);
+    box-shadow:-30px 0 60px -20px oklch(0 0 0 / 0.7);
+    transform:translateX(102%);
+    transition:transform .3s cubic-bezier(.22,1,.36,1);
+    overflow-y:auto; overscroll-behavior:contain;
+  }
+  .drawer.open{ transform:translateX(0); }
+
+  .drawer__close{
+    position:sticky; top:0; z-index:2; float:right;
+    margin:14px 14px 0; appearance:none; cursor:pointer;
+    width:38px; height:38px; border-radius:50%;
+    border:1px solid var(--line); background:var(--bg-3);
+    color:var(--ink-dim); font-size:18px; line-height:1;
+    transition:color .15s ease, background-color .15s ease;
+  }
+  .drawer__close:hover{ color:var(--ink); background:var(--bg); }
+  .drawer__close:focus-visible{ outline:2px solid var(--accent); outline-offset:2px; }
+
+  .drawer__inner{ padding:6px 28px 40px; }
+
+  .drawer__hero{ display:flex; justify-content:center; padding:14px 0 26px; }
+  .drawer__hero .tape__body{
+    width:230px; margin:0; cursor:default;
+    transform:rotateX(4deg);
+  }
+
+  .drawer__title{
+    font-family:"Anton",sans-serif;
+    font-size:2.2rem; line-height:0.96;
+    letter-spacing:0.012em; text-transform:uppercase;
+  }
+  .drawer__chips{
+    margin-top:12px; display:flex; flex-wrap:wrap; gap:7px;
+  }
+  .chip{
+    font-family:"Space Mono",monospace; font-size:10.5px; font-weight:700;
+    letter-spacing:0.06em; text-transform:uppercase;
+    color:var(--ink-dim);
+    background:var(--bg-3); border:1px solid var(--line);
+    padding:5px 10px; border-radius:6px;
+  }
+
+  .drawer__synopsis{
+    margin-top:20px;
+    font-size:14.5px; line-height:1.62; color:var(--ink-dim);
+  }
+  .drawer__synopsis::first-letter{
+    font-family:"Anton",sans-serif; font-size:2.5em;
+    float:left; line-height:0.78; margin:4px 9px 0 0;
+    color:var(--accent);
+  }
+
+  .credits{
+    margin-top:22px; border-top:1px solid var(--line);
+  }
+  .credits__row{
+    display:flex; gap:16px;
+    padding:11px 2px;
+    border-bottom:1px solid var(--line);
+  }
+  .credits__k{
+    flex:0 0 96px;
+    font-family:"Space Mono",monospace; font-size:10.5px; font-weight:700;
+    letter-spacing:0.08em; text-transform:uppercase;
+    color:var(--ink-faint);
+    padding-top:2px;
+  }
+  .credits__v{ flex:1; font-size:14px; color:var(--ink); }
+
+  .source{
+    margin:24px 0 4px;
+    background:oklch(0.30 0.05 72 / 0.5);
+    border:1px solid var(--accent-lo);
+    border-radius:8px;
+    padding:13px 15px;
+    transform:rotate(-1.4deg);
+  }
+  .source__label{
+    font-family:"Space Mono",monospace; font-size:9.5px; font-weight:700;
+    letter-spacing:0.13em; text-transform:uppercase;
+    color:var(--accent);
+    display:flex; align-items:center; gap:6px;
+  }
+  .source__text{ margin-top:5px; font-size:13.5px; color:var(--ink); }
+
+  .barcode{
+    margin-top:26px;
+    height:50px; border-radius:3px;
+    background-color:oklch(0.93 0.01 82);
+    background-image:
+      repeating-linear-gradient(90deg,
+        oklch(0.17 0.012 52) 0 2px, transparent 2px 4px,
+        oklch(0.17 0.012 52) 4px 7px, transparent 7px 9px,
+        oklch(0.17 0.012 52) 9px 10px, transparent 10px 14px,
+        oklch(0.17 0.012 52) 14px 17px, transparent 17px 19px);
+  }
+  .barcode-num{
+    margin-top:5px;
+    font-family:"Space Mono",monospace; font-size:11px;
+    letter-spacing:0.22em; color:var(--ink-faint);
+    text-align:center;
+  }
+
+  .watchbtn{
+    margin-top:28px; width:100%;
+    appearance:none; cursor:pointer;
+    font-family:"Anton",sans-serif; font-size:1.18rem;
+    letter-spacing:0.05em; text-transform:uppercase;
+    padding:15px; border-radius:10px;
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    transition:transform .12s ease, background-color .18s ease, border-color .18s ease;
+  }
+  .watchbtn:active{ transform:scale(0.985); }
+  .watchbtn:focus-visible{ outline:2px solid var(--accent); outline-offset:3px; }
+  .watchbtn[data-on="false"]{
+    background:transparent;
+    border:2px solid var(--accent);
+    color:var(--accent);
+  }
+  .watchbtn[data-on="false"]:hover{ background:oklch(0.30 0.05 72 / 0.4); }
+  .watchbtn[data-on="true"]{
+    background:var(--stamp);
+    border:2px solid var(--stamp);
+    color:oklch(0.96 0.02 40);
+  }
+  .watchbtn[data-on="true"]:hover{ background:oklch(0.52 0.17 30); }
+  .watchbtn__hint{
+    text-align:center; margin-top:9px;
+    font-family:"Inter",sans-serif; font-size:11.5px;
+    color:var(--ink-faint);
+  }
+
+  noscript .nojs{
+    display:block; max-width:500px; margin:80px auto; padding:0 24px;
+    text-align:center; color:var(--ink-dim);
+  }
+
+  @media (max-width:560px){
+    .grid{ grid-template-columns:1fr; }
+    .drawer{ width:100vw; border-left:0; }
+    .segmented{ width:100%; }
+    .seg{ flex:1; justify-content:center; padding:10px 6px; font-size:11px; letter-spacing:0.02em; gap:6px; }
+    .filterbar .wrap{ gap:12px; }
+    .scanroom__head{ flex-direction:column; align-items:flex-start; gap:6px; }
+    .reviewgrid{ grid-template-columns:1fr 1fr; }
+    .scanbar__btns{ width:100%; }
+    .scanbar__btns .scanbtn{ text-align:center; }
+    .scanbar__btns .scanbtn--ghost{ flex:1; }
+    .scanbar__btns .scanbtn--primary{ flex-basis:100%; order:-1; }
+  }
+
+  @media (prefers-reduced-motion:reduce){
+    *{ animation-duration:.01ms !important; transition-duration:.01ms !important; }
+    .tape:hover .tape__body,
+    .tape:focus-visible .tape__body{ transform:none; }
+    .analyzing__reel{ animation-name:none; }
+  }
+</style>
+</head>
+<body>
+<div class="ambient" aria-hidden="true"></div>
+
+<noscript><div class="nojs">REWIND needs JavaScript enabled to load your shelf.</div></noscript>
+
+<header>
+  <div class="wrap">
+    <h1 class="wordmark"><span class="rw"><span>R</span></span>REWIND</h1>
+    <p class="tagline">The movies your screenshots kept telling you to watch, <b>synthesized into tapes</b> and shelved for the next quiet night in.</p>
+    <div class="rule"></div>
+  </div>
+</header>
+
+<section class="scanroom" aria-label="Scan screenshots for movie recommendations">
+  <div class="wrap">
+    <div class="scanroom__head">
+      <div class="scanroom__intro">
+        <h2 class="scanroom__title">Scan Room</h2>
+        <p class="scanroom__sub">Drop in screenshots of movie recommendations. REWIND reads them and pulls the films onto your shelf.</p>
+      </div>
+      <span class="scan-status" id="scanStatus" role="status" aria-live="polite"></span>
+    </div>
+    <div class="scanpanel" id="scanPanel"></div>
+  </div>
+</section>
+
+<div class="filterbar">
+  <div class="wrap">
+    <div class="segmented" role="group" aria-label="Filter the shelf">
+      <button class="seg" data-filter="all" aria-pressed="true">All <span class="count" data-count="all">0</span></button>
+      <button class="seg" data-filter="unwatched" aria-pressed="false">To Watch <span class="count" data-count="unwatched">0</span></button>
+      <button class="seg" data-filter="watched" aria-pressed="false">Watched <span class="count" data-count="watched">0</span></button>
+    </div>
+    <div class="shelfnote" id="shelfnote">Tapes synthesized from your screenshots</div>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+</main>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-label="Movie details" aria-hidden="true">
+  <button class="drawer__close" id="drawerClose" aria-label="Close details">&#10005;</button>
+  <div class="drawer__inner" id="drawerInner"></div>
+</aside>
+
+<script>
+const MOVIES = [
+  {
+    id:"whiplash", title:"Whiplash", year:1+2013, genre:"Drama / Music",
+    director:"Damien Chazelle", runtime:"106 min",
+    cast:["Miles Teller","J.K. Simmons"],
+    synopsis:"A driven young drummer enrolls at a cutthroat conservatory, where a brutal instructor will push, belittle and bleed him toward greatness, or break him trying.",
+    label:"oklch(0.725 0.138 78)", ink:"dark", tilt:"-1.4deg",
+    source:"Screenshotted from a Letterboxd all-time top 100 list.",
+    seedWatched:true
+  },
+  {
+    id:"parasite", title:"Parasite", year:2019, genre:"Thriller / Dark Comedy",
+    director:"Bong Joon-ho", runtime:"132 min",
+    cast:["Song Kang-ho","Lee Sun-kyun"],
+    synopsis:"A struggling family cons its way, one job at a time, into the household of the wealthy Parks, until a buried secret threatens to bring the whole scheme down.",
+    label:"oklch(0.60 0.052 166)", ink:"light", tilt:"0.9deg",
+    source:"A friend's text message: 'watch this before anyone spoils it'.",
+    seedWatched:false
+  },
+  {
+    id:"grand-budapest", title:"The Grand Budapest Hotel", year:2014, genre:"Comedy / Caper",
+    director:"Wes Anderson", runtime:"99 min",
+    cast:["Ralph Fiennes","Tony Revolori"],
+    synopsis:"A legendary concierge and his loyal lobby boy are swept into the theft of a priceless painting and a feud over a family fortune across a fading European republic.",
+    label:"oklch(0.825 0.082 350)", ink:"dark", tilt:"-0.6deg",
+    source:"Screenshotted from an Instagram film account's colour-palette post.",
+    seedWatched:false
+  },
+  {
+    id:"blade-runner-2049", title:"Blade Runner 2049", year:2017, genre:"Science Fiction",
+    director:"Denis Villeneuve", runtime:"164 min",
+    cast:["Ryan Gosling","Harrison Ford"],
+    synopsis:"A new blade runner unearths a secret long buried in the ruins of the old world, a discovery with the power to tip what remains of society into chaos.",
+    label:"oklch(0.685 0.142 58)", ink:"dark", tilt:"1.3deg",
+    source:"Pulled from a Reddit r/movies 'most beautiful films' thread.",
+    seedWatched:false
+  },
+  {
+    id:"past-lives", title:"Past Lives", year:2023, genre:"Romance / Drama",
+    director:"Celine Song", runtime:"105 min",
+    cast:["Greta Lee","Teo Yoo"],
+    synopsis:"Two childhood friends, parted by an ocean and two decades, reunite for a single week and quietly weigh the lives they chose against the ones they let go.",
+    label:"oklch(0.685 0.062 246)", ink:"dark", tilt:"-1.0deg",
+    source:"Screenshotted from a Letterboxd review you double-tapped.",
+    seedWatched:false
+  },
+  {
+    id:"fury-road", title:"Mad Max: Fury Road", year:2015, genre:"Action",
+    director:"George Miller", runtime:"120 min",
+    cast:["Tom Hardy","Charlize Theron"],
+    synopsis:"Across a scorched desert wasteland, a haunted drifter and a renegade commander run a single, relentless chase to outpace a tyrant and his war machine.",
+    label:"oklch(0.62 0.152 48)", ink:"light", tilt:"0.7deg",
+    source:"Grabbed from a 'best action of the decade' YouTube video.",
+    seedWatched:true
+  },
+  {
+    id:"spirited-away", title:"Spirited Away", year:2001, genre:"Animation / Fantasy",
+    director:"Hayao Miyazaki", runtime:"125 min",
+    cast:["Rumi Hiiragi","Miyu Irino"],
+    synopsis:"A sulky girl strays into a world of spirits and must take work in a bathhouse for the gods to free her transformed parents and find the way back home.",
+    label:"oklch(0.555 0.082 200)", ink:"light", tilt:"-1.2deg",
+    source:"Screenshotted from a Studio Ghibli ranking thread.",
+    seedWatched:true
+  },
+  {
+    id:"everything-everywhere", title:"Everything Everywhere All at Once", year:2022, genre:"Sci-Fi / Comedy",
+    director:"Daniels", runtime:"139 min",
+    cast:["Michelle Yeoh","Ke Huy Quan"],
+    synopsis:"An exhausted laundromat owner, mid-audit and mid-crisis, learns she must reach across countless parallel versions of herself to hold a fracturing multiverse together.",
+    label:"oklch(0.555 0.158 308)", ink:"light", tilt:"1.1deg",
+    source:"A friend screenshotted an awards shortlist and sent it over.",
+    seedWatched:false
+  }
+];
+
+const LS_W = "rewind.watched.v1";
+const LS_F = "rewind.filter.v1";
+const LS_A = "rewind.added.v1";
+const FILTERS = ["all","unwatched","watched"];
+const SEED_IDS = MOVIES.map(m=>m.id);
+
+let watched = new Set();
+let filter = "all";
+
+const grid       = document.getElementById("grid");
+const scrim      = document.getElementById("scrim");
+const drawer     = document.getElementById("drawer");
+const drawerInner= document.getElementById("drawerInner");
+const drawerClose= document.getElementById("drawerClose");
+const segs       = [...document.querySelectorAll(".seg")];
+let lastFocused  = null;
+let openId       = null;
+
+function loadState(){
+  try{
+    const w = JSON.parse(localStorage.getItem(LS_W));
+    watched = Array.isArray(w)
+      ? new Set(w)
+      : new Set(MOVIES.filter(m=>m.seedWatched).map(m=>m.id));
+    const f = localStorage.getItem(LS_F);
+    if(FILTERS.includes(f)) filter = f;
+  }catch(e){
+    watched = new Set(MOVIES.filter(m=>m.seedWatched).map(m=>m.id));
+  }
+}
+function saveState(){
+  try{
+    localStorage.setItem(LS_W, JSON.stringify([...watched]));
+    localStorage.setItem(LS_F, filter);
+  }catch(e){}
+}
+
+function loadAdded(){
+  try{
+    const a = JSON.parse(localStorage.getItem(LS_A));
+    if(Array.isArray(a)){
+      a.forEach(m=>{
+        if(m && m.id && !MOVIES.some(x=>x.id===m.id)) MOVIES.push(m);
+      });
+    }
+  }catch(e){}
+}
+function saveAdded(){
+  try{
+    localStorage.setItem(LS_A,
+      JSON.stringify(MOVIES.filter(m=>!SEED_IDS.includes(m.id))));
+  }catch(e){}
+}
+
+function titleSize(t){
+  const n = t.length;
+  return n<=10 ? 1.74 : n<=16 ? 1.40 : n<=23 ? 1.14 : 0.98;
+}
+
+function tapeInner(m){
+  const on = watched.has(m.id);
+  const lf = on ? 0.92 : 0.36;
+  const rf = on ? 0.36 : 0.92;
+  return `
+    <div class="tape__body">
+      <div class="tape__label" data-ink="${m.ink}" style="--label:${m.label};--tilt:${m.tilt}">
+        <span class="tape__title" style="font-size:${titleSize(m.title)}rem">${m.title}</span>
+        <span class="tape__genre">${m.genre} &middot; ${m.year}</span>
+      </div>
+      <div class="tape__deck">
+        <div class="tape__viewport">
+          <div class="reel"><div class="reel__tape" style="--fill:${lf}"></div><div class="reel__hub"></div></div>
+          <div class="reel"><div class="reel__tape" style="--fill:${rf}"></div><div class="reel__hub"></div></div>
+        </div>
+        <div class="tape__flap"><span class="tape__brand">VHS &middot; SP &middot; ${m.runtime}</span></div>
+      </div>
+      <div class="tape__stamp">Watched</div>
+    </div>`;
+}
+
+function buildCard(m){
+  const card = document.createElement("button");
+  card.className = "tape";
+  card.dataset.id = m.id;
+  card.dataset.watched = watched.has(m.id);
+  card.setAttribute("aria-label", `${m.title}, ${m.year}. ${watched.has(m.id)?"Watched":"Not watched"}. Open details.`);
+  card.innerHTML = tapeInner(m);
+  card.addEventListener("click", ()=>{ if(justDragged) return; openDrawer(m.id); });
+  return card;
+}
+
+function render(){
+  grid.innerHTML = "";
+  MOVIES.forEach(m=> grid.appendChild(buildCard(m)) );
+  const empty = document.createElement("div");
+  empty.className = "empty";
+  empty.id = "empty";
+  empty.hidden = true;
+  empty.innerHTML = `<div class="empty__icon"><span>NO SIGNAL</span></div>
+    <h2 id="emptyTitle"></h2><p id="emptyText"></p>`;
+  grid.appendChild(empty);
+}
+
+function updateCounts(){
+  const all = MOVIES.length;
+  const w = MOVIES.filter(m=>watched.has(m.id)).length;
+  document.querySelector('[data-count="all"]').textContent = all;
+  document.querySelector('[data-count="watched"]').textContent = w;
+  document.querySelector('[data-count="unwatched"]').textContent = all - w;
+}
+
+function matches(id){
+  if(filter==="all") return true;
+  const w = watched.has(id);
+  return filter==="watched" ? w : !w;
+}
+
+function applyFilter(){
+  segs.forEach(s=>s.setAttribute("aria-pressed", String(s.dataset.filter===filter)));
+  const cards = [...grid.querySelectorAll(".tape")];
+  let shown = 0;
+  cards.forEach(c=>{
+    const ok = matches(c.dataset.id);
+    c.style.display = ok ? "" : "none";
+    c.style.animation = "none";
+    if(ok) shown++;
+  });
+  void grid.offsetWidth;
+  let i = 0;
+  cards.forEach(c=>{
+    if(c.style.display!=="none"){
+      c.style.animation = "tape-in .36s cubic-bezier(.22,1,.36,1) both";
+      c.style.animationDelay = Math.min(i,9)*26 + "ms";
+      i++;
+    }
+  });
+  const empty = document.getElementById("empty");
+  empty.hidden = shown>0;
+  if(!shown){
+    const t = document.getElementById("emptyTitle");
+    const p = document.getElementById("emptyText");
+    if(filter==="watched"){
+      t.textContent = "Nothing returned yet";
+      p.textContent = "No tape on the shelf has been marked watched.";
+    }else{
+      t.textContent = "You are all caught up";
+      p.textContent = "Every tape on the shelf has already been watched.";
+    }
+  }
+}
+
+function setFilter(f){
+  filter = f;
+  saveState();
+  applyFilter();
+}
+
+function syncCard(id){
+  const card = grid.querySelector(`.tape[data-id="${id}"]`);
+  if(!card) return;
+  const m = MOVIES.find(x=>x.id===id);
+  const on = watched.has(id);
+  card.dataset.watched = on;
+  card.setAttribute("aria-label", `${m.title}, ${m.year}. ${on?"Watched":"Not watched"}. Open details.`);
+  const tapes = card.querySelectorAll(".reel__tape");
+  tapes[0].style.setProperty("--fill", on?0.92:0.36);
+  tapes[1].style.setProperty("--fill", on?0.36:0.92);
+  card.querySelector(".tape__body").classList.add("winding");
+  card.classList.add("winding");
+  setTimeout(()=>card.classList.remove("winding"), 720);
+}
+
+function toggleWatched(id){
+  watched.has(id) ? watched.delete(id) : watched.add(id);
+  saveState();
+  syncCard(id);
+  updateCounts();
+  if(openId===id) fillDrawer(id);
+  setTimeout(applyFilter, 660);
+}
+
+function drawerHTML(m){
+  const on = watched.has(m.id);
+  return `
+    <div class="drawer__hero">${tapeInner(m)}</div>
+    <h2 class="drawer__title">${m.title}</h2>
+    <div class="drawer__chips">
+      <span class="chip">${m.year}</span>
+      <span class="chip">${m.genre}</span>
+      <span class="chip">${m.runtime}</span>
+    </div>
+    <p class="drawer__synopsis">${m.synopsis}</p>
+    <div class="credits">
+      <div class="credits__row"><div class="credits__k">Director</div><div class="credits__v">${m.director}</div></div>
+      <div class="credits__row"><div class="credits__k">Starring</div><div class="credits__v">${m.cast.join(", ")}</div></div>
+      <div class="credits__row"><div class="credits__k">Genre</div><div class="credits__v">${m.genre}</div></div>
+      <div class="credits__row"><div class="credits__k">Runtime</div><div class="credits__v">${m.runtime}</div></div>
+    </div>
+    <div class="source">
+      <div class="source__label">&#8635; Recommended from</div>
+      <div class="source__text">${m.source}</div>
+    </div>
+    <div class="barcode" aria-hidden="true"></div>
+    <div class="barcode-num">0 ${String(m.year)}0 ${m.runtime.replace(/\D/g,"")}00 4</div>
+    <button class="watchbtn" id="watchBtn" data-on="${on}">
+      ${on ? "&#10003; Watched" : "Mark as Watched"}
+    </button>
+    <p class="watchbtn__hint">${on ? "On the shelf as watched. Tap to put it back in the queue." : "Saved to this device. Stamp it once the credits roll."}</p>`;
+}
+
+function fillDrawer(id){
+  const m = MOVIES.find(x=>x.id===id);
+  drawerInner.innerHTML = drawerHTML(m);
+  drawerInner.querySelector("#watchBtn")
+    .addEventListener("click", ()=>toggleWatched(id));
+}
+
+function openDrawer(id){
+  openId = id;
+  lastFocused = document.activeElement;
+  fillDrawer(id);
+  drawer.classList.add("open");
+  scrim.classList.add("open");
+  drawer.setAttribute("aria-hidden","false");
+  document.body.style.overflow = "hidden";
+  drawerClose.focus();
+}
+
+function closeDrawer(){
+  openId = null;
+  drawer.classList.remove("open");
+  scrim.classList.remove("open");
+  drawer.setAttribute("aria-hidden","true");
+  document.body.style.overflow = "";
+  if(lastFocused && lastFocused.focus) lastFocused.focus();
+}
+
+segs.forEach(s=> s.addEventListener("click", ()=>setFilter(s.dataset.filter)) );
+drawerClose.addEventListener("click", closeDrawer);
+scrim.addEventListener("click", closeDrawer);
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape" && openId) closeDrawer();
+});
+
+/* ---------- drag to reorder the shelf ---------- */
+const LS_O = "rewind.order.v1";
+let justDragged = false;
+let drag = null;
+
+function loadOrder(){
+  try{
+    const o = JSON.parse(localStorage.getItem(LS_O));
+    if(Array.isArray(o) && o.length){
+      MOVIES.sort((a,b)=>{
+        let ia=o.indexOf(a.id), ib=o.indexOf(b.id);
+        if(ia<0) ia=1e6;
+        if(ib<0) ib=1e6;
+        return ia-ib;
+      });
+    }
+  }catch(e){}
+}
+function saveOrder(){
+  try{
+    localStorage.setItem(LS_O,
+      JSON.stringify([...grid.querySelectorAll(".tape")].map(c=>c.dataset.id)));
+  }catch(e){}
+}
+
+const allTapes = ()=>[...grid.querySelectorAll(".tape")];
+const visibleTapes = ()=>allTapes().filter(t=>t.style.display!=="none");
+
+let caret = null;
+function ensureCaret(){
+  if(caret) return;
+  caret = document.createElement("div");
+  caret.className = "drop-caret";
+  grid.appendChild(caret);
+}
+
+function applyGlue(px,py){
+  const el=drag.el, r=el.getBoundingClientRect();
+  drag.tx = (px-drag.grabX) - (r.left-drag.tx);
+  drag.ty = (py-drag.grabY) - (r.top -drag.ty);
+  el.style.transform=`translate(${drag.tx}px,${drag.ty}px)`;
+}
+
+/* during the drag we only move the caret — no tapes shift until release */
+function updateDropTarget(px,py){
+  const sibs=visibleTapes().filter(t=>t!==drag.el);
+  if(!sibs.length){ caret.classList.remove("show"); return; }
+  let best=null, bd=Infinity;
+  for(const t of sibs){
+    const r=t.getBoundingClientRect();
+    const d=Math.hypot(px-(r.left+r.width/2), py-(r.top+r.height/2));
+    if(d<bd){ bd=d; best=t; }
+  }
+  const r=best.getBoundingClientRect();
+  const after = px > r.left + r.width/2;
+  drag.targetRef = after ? best.nextElementSibling : best;
+  const g=grid.getBoundingClientRect();
+  let cx = (after ? r.right : r.left) - g.left - 2;
+  cx = Math.max(3, Math.min(cx, g.width - 7));
+  caret.style.height = r.height + "px";
+  caret.style.top    = (r.top - g.top) + "px";
+  caret.style.left   = cx + "px";
+  caret.classList.add("show");
+}
+
+function beginDrag(px,py){
+  drag.started=true;
+  justDragged=true;
+  const el=drag.el, r=el.getBoundingClientRect();
+  drag.grabX=drag.startX-r.left;
+  drag.grabY=drag.startY-r.top;
+  drag.tx=0; drag.ty=0;
+  drag.targetRef=el.nextElementSibling;
+  allTapes().forEach(t=>t.style.animation="none");
+  grid.classList.add("is-dragging");
+  el.classList.add("is-lifted");
+  el.style.transition="none";
+  document.body.style.cursor="grabbing";
+  applyGlue(px,py);
+  updateDropTarget(px,py);
+}
+
+function dragMove(px,py){
+  applyGlue(px,py);
+  updateDropTarget(px,py);
+}
+
+function onMove(e){
+  if(!drag || e.pointerId!==drag.pointerId) return;
+  const dx=e.clientX-drag.startX, dy=e.clientY-drag.startY;
+  if(!drag.started){
+    if(drag.touch){
+      if(Math.hypot(dx,dy)>10) endDrag();
+      return;
+    }
+    if(Math.hypot(dx,dy)<6) return;
+    beginDrag(e.clientX,e.clientY);
+  }
+  e.preventDefault();
+  dragMove(e.clientX,e.clientY);
+}
+
+function endDrag(){
+  if(!drag) return;
+  const el=drag.el, was=drag.started;
+  if(drag.holdTimer) clearTimeout(drag.holdTimer);
+  document.removeEventListener("pointermove",onMove);
+  document.removeEventListener("pointerup",endDrag);
+  document.removeEventListener("pointercancel",endDrag);
+  if(was){
+    if(caret) caret.classList.remove("show");
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const tapes = visibleTapes();
+    const first = new Map();
+    tapes.forEach(t=>first.set(t, t.getBoundingClientRect()));
+    el.classList.remove("is-lifted");
+    el.style.transform="";
+    grid.classList.remove("is-dragging");
+    document.body.style.cursor="";
+    let ref = drag.targetRef;
+    if(ref===el) ref = el.nextElementSibling;
+    grid.insertBefore(el, ref);
+    saveOrder();
+    tapes.forEach(t=>{
+      const f=first.get(t), l=t.getBoundingClientRect();
+      const dx=f.left-l.left, dy=f.top-l.top;
+      t.style.transition="none";
+      t.style.transform = (dx||dy) ? `translate(${dx}px,${dy}px)` : "";
+    });
+    requestAnimationFrame(()=>{
+      tapes.forEach(t=>{
+        if(!t.style.transform) return;
+        t.style.transition = reduce ? "none" : "transform .38s cubic-bezier(.22,1,.36,1)";
+        t.style.transform="";
+      });
+    });
+    setTimeout(()=>{ tapes.forEach(t=>{ t.style.transition=""; }); }, reduce?0:460);
+    setTimeout(()=>{ justDragged=false; }, 80);
+  }
+  drag=null;
+}
+
+function initDrag(){
+  ensureCaret();
+  grid.addEventListener("pointerdown", e=>{
+    if(e.button>0) return;
+    const el=e.target.closest(".tape");
+    if(!el) return;
+    drag={ el, pointerId:e.pointerId, startX:e.clientX, startY:e.clientY,
+           started:false, touch:e.pointerType==="touch", holdTimer:null,
+           tx:0, ty:0, grabX:0, grabY:0 };
+    document.addEventListener("pointermove",onMove,{passive:false});
+    document.addEventListener("pointerup",endDrag);
+    document.addEventListener("pointercancel",endDrag);
+    if(drag.touch){
+      drag.holdTimer=setTimeout(()=>{
+        if(drag && !drag.started) beginDrag(drag.startX,drag.startY);
+      },220);
+    }
+  });
+  document.addEventListener("touchmove", e=>{
+    if(drag && drag.started) e.preventDefault();
+  }, {passive:false});
+}
+
+/* ---------- scan room (front-end flow; the analyzer is a stub) ---------- */
+const SAMPLE_FINDS = [
+  {
+    title:"Dune: Part Two", year:2024, genre:"Science Fiction",
+    director:"Denis Villeneuve", runtime:"166 min",
+    cast:["Timothée Chalamet","Zendaya"],
+    synopsis:"Paul Atreides unites with the Fremen to wage war on the houses that destroyed his family, while a future only he can see closes in.",
+    label:"oklch(0.70 0.105 72)", ink:"dark", tilt:"-1.1deg"
+  },
+  {
+    title:"Oppenheimer", year:2023, genre:"Drama / History",
+    director:"Christopher Nolan", runtime:"180 min",
+    cast:["Cillian Murphy","Emily Blunt"],
+    synopsis:"The physicist who led the Manhattan Project reckons with the weapon he gave the world, and the politics that turn on him after.",
+    label:"oklch(0.585 0.16 42)", ink:"light", tilt:"0.8deg"
+  },
+  {
+    title:"Arrival", year:2016, genre:"Science Fiction",
+    director:"Denis Villeneuve", runtime:"116 min",
+    cast:["Amy Adams","Jeremy Renner"],
+    synopsis:"When alien craft settle over the globe, a linguist races to decode their language before fear tips the world into war.",
+    label:"oklch(0.62 0.045 232)", ink:"light", tilt:"-0.7deg"
+  },
+  {
+    title:"The Social Network", year:2010, genre:"Drama",
+    director:"David Fincher", runtime:"120 min",
+    cast:["Jesse Eisenberg","Andrew Garfield"],
+    synopsis:"The founding of a social network becomes a fortune and a betrayal, retold through the lawsuits of the friends it broke.",
+    label:"oklch(0.50 0.065 250)", ink:"light", tilt:"1.2deg"
+  },
+  {
+    title:"In the Mood for Love", year:2000, genre:"Romance / Drama",
+    director:"Wong Kar-wai", runtime:"98 min",
+    cast:["Tony Leung","Maggie Cheung"],
+    synopsis:"Two neighbours in 1960s Hong Kong discover their spouses are having an affair, and circle a romance they refuse to allow themselves.",
+    label:"oklch(0.475 0.13 22)", ink:"light", tilt:"-0.9deg"
+  }
+];
+
+const scanPanel  = document.getElementById("scanPanel");
+const scanStatus = document.getElementById("scanStatus");
+let scanState = "idle";
+let scanFiles = [];
+let scanFinds = [];
+
+function flashStatus(msg){
+  scanStatus.textContent = msg;
+  scanStatus.classList.add("show");
+  clearTimeout(flashStatus._t);
+  flashStatus._t = setTimeout(()=>scanStatus.classList.remove("show"), 4500);
+}
+
+function setScanState(s){ scanState = s; renderScan(); }
+
+function clearScanFiles(){
+  scanFiles.forEach(f=>URL.revokeObjectURL(f.url));
+  scanFiles = [];
+}
+
+function addScanFiles(fileList){
+  let added = 0;
+  [...fileList].forEach(f=>{
+    if(f.type && f.type.startsWith("image/")){
+      scanFiles.push({ file:f, url:URL.createObjectURL(f) });
+      added++;
+    }
+  });
+  if(added) setScanState("staged");
+}
+
+function stubAnalyze(){
+  /* The real OCR / vision backend replaces this one function. */
+  const have = new Set(MOVIES.map(m=>m.title.toLowerCase()));
+  return SAMPLE_FINDS
+    .filter(m=>!have.has(m.title.toLowerCase()))
+    .map(m=>({ ...m, cast:[...m.cast] }));
+}
+
+function renderScan(){
+  if(scanState==="idle"){
+    scanPanel.innerHTML = `
+      <div class="dropzone" id="dropzone">
+        <div class="dropzone__icon" aria-hidden="true">&#8595;</div>
+        <p class="dropzone__lead">Drop screenshots here</p>
+        <p class="dropzone__hint">PNG or JPG. Letterboxd lists, texts from friends, posts, anything with a film recommendation in it.</p>
+        <button class="scanbtn scanbtn--primary" id="browseBtn" type="button">Browse files</button>
+        <input type="file" id="fileInput" accept="image/*" multiple hidden>
+      </div>`;
+  } else if(scanState==="staged"){
+    scanPanel.innerHTML = `
+      <div class="dropzone dropzone--mini" id="dropzone">
+        <div class="thumbstrip">
+          ${scanFiles.map((f,i)=>`
+            <div class="thumb">
+              <img src="${f.url}" alt="Screenshot ${i+1}">
+              <button class="thumb__x" data-rm="${i}" type="button" aria-label="Remove screenshot ${i+1}">&#10005;</button>
+            </div>`).join("")}
+        </div>
+      </div>
+      <div class="scanbar">
+        <span class="scanbar__count">${scanFiles.length} screenshot${scanFiles.length===1?"":"s"} ready</span>
+        <span class="scanbar__btns">
+          <button class="scanbtn scanbtn--ghost" id="addMoreBtn" type="button">Add more</button>
+          <button class="scanbtn scanbtn--ghost" id="clearBtn" type="button">Clear</button>
+          <button class="scanbtn scanbtn--primary" id="scanBtn" type="button">Scan for movies</button>
+        </span>
+      </div>
+      <input type="file" id="fileInput" accept="image/*" multiple hidden>`;
+  } else if(scanState==="analyzing"){
+    scanPanel.innerHTML = `
+      <div class="analyzing">
+        <div class="analyzing__reel" aria-hidden="true"><div class="analyzing__hub"></div></div>
+        <p class="analyzing__line" id="analyzingLine" role="status" aria-live="polite">Reading your screenshots...</p>
+        <div class="analyzing__bar"><div class="analyzing__fill" id="analyzingFill"></div></div>
+      </div>`;
+  } else if(scanState==="review"){
+    scanPanel.innerHTML = `
+      <p class="reviewhead__lead">${scanFinds.length} film${scanFinds.length===1?"":"s"} detected in your screenshots. Pick the ones to shelve.</p>
+      <div class="reviewgrid">
+        ${scanFinds.map((m,i)=>`
+          <div class="reviewitem" data-find="${i}">
+            <div class="tape tape--mini">${tapeInner(m)}</div>
+            <button class="reviewtoggle" data-toggle="${i}" type="button" aria-pressed="true">Including</button>
+          </div>`).join("")}
+      </div>
+      <div class="scanbar">
+        <span class="scanbar__count" id="reviewCount"></span>
+        <span class="scanbar__btns">
+          <button class="scanbtn scanbtn--ghost" id="discardBtn" type="button">Discard</button>
+          <button class="scanbtn scanbtn--primary" id="addBtn" type="button">Add to shelf</button>
+        </span>
+      </div>`;
+  }
+  wireScan();
+}
+
+function wireScan(){
+  const dz = document.getElementById("dropzone");
+  const fileInput = document.getElementById("fileInput");
+  if(dz){
+    dz.addEventListener("dragover", e=>{ e.preventDefault(); dz.classList.add("is-dragover"); });
+    dz.addEventListener("dragleave", e=>{ if(e.target===dz) dz.classList.remove("is-dragover"); });
+    dz.addEventListener("drop", e=>{
+      e.preventDefault();
+      dz.classList.remove("is-dragover");
+      if(e.dataTransfer && e.dataTransfer.files.length) addScanFiles(e.dataTransfer.files);
+    });
+  }
+  if(fileInput){
+    fileInput.addEventListener("change", ()=>{ if(fileInput.files.length) addScanFiles(fileInput.files); });
+  }
+  const browseBtn = document.getElementById("browseBtn");
+  if(browseBtn && fileInput) browseBtn.addEventListener("click", ()=>fileInput.click());
+  const addMoreBtn = document.getElementById("addMoreBtn");
+  if(addMoreBtn && fileInput) addMoreBtn.addEventListener("click", ()=>fileInput.click());
+  const clearBtn = document.getElementById("clearBtn");
+  if(clearBtn) clearBtn.addEventListener("click", ()=>{ clearScanFiles(); setScanState("idle"); });
+  const scanBtn = document.getElementById("scanBtn");
+  if(scanBtn) scanBtn.addEventListener("click", runScan);
+  scanPanel.querySelectorAll("[data-rm]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const i = +btn.dataset.rm;
+      URL.revokeObjectURL(scanFiles[i].url);
+      scanFiles.splice(i,1);
+      setScanState(scanFiles.length ? "staged" : "idle");
+    });
+  });
+  scanPanel.querySelectorAll("[data-toggle]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const on = btn.getAttribute("aria-pressed")==="true";
+      btn.setAttribute("aria-pressed", String(!on));
+      btn.textContent = on ? "Skipped" : "Including";
+      btn.closest(".reviewitem").classList.toggle("is-excluded", on);
+      updateReviewCount();
+    });
+  });
+  const discardBtn = document.getElementById("discardBtn");
+  if(discardBtn) discardBtn.addEventListener("click", ()=>{
+    scanFinds = []; clearScanFiles(); setScanState("idle");
+  });
+  const addBtn = document.getElementById("addBtn");
+  if(addBtn) addBtn.addEventListener("click", confirmAdd);
+  if(scanState==="review") updateReviewCount();
+}
+
+function updateReviewCount(){
+  const el = document.getElementById("reviewCount");
+  if(!el) return;
+  const n = scanPanel.querySelectorAll('.reviewtoggle[aria-pressed="true"]').length;
+  el.textContent = `${n} of ${scanFinds.length} selected`;
+}
+
+function runScan(){
+  setScanState("analyzing");
+  const total = scanFiles.length;
+  const dur = 2600;
+  const t0 = performance.now();
+  const line = document.getElementById("analyzingLine");
+  const fill = document.getElementById("analyzingFill");
+  const tick = setInterval(()=>{
+    const p = Math.min(1, (performance.now()-t0)/dur);
+    if(fill) fill.style.width = Math.round(p*100) + "%";
+    if(line){
+      if(p < 0.9){
+        const shot = Math.min(total, Math.floor(p/0.9*total) + 1);
+        line.textContent = `Reading screenshot ${shot} of ${total}...`;
+      } else {
+        line.textContent = "Matching films...";
+      }
+    }
+    if(p >= 1){
+      clearInterval(tick);
+      scanFinds = stubAnalyze();
+      if(scanFinds.length){
+        setScanState("review");
+      } else {
+        clearScanFiles();
+        setScanState("idle");
+        flashStatus("No new films found in those screenshots.");
+      }
+    }
+  }, 80);
+}
+
+function confirmAdd(){
+  const chosen = [];
+  scanPanel.querySelectorAll(".reviewitem").forEach(item=>{
+    const t = item.querySelector(".reviewtoggle");
+    if(t.getAttribute("aria-pressed")==="true") chosen.push(scanFinds[+item.dataset.find]);
+  });
+  if(!chosen.length){ flashStatus("Pick at least one film, or discard."); return; }
+  addMoviesToShelf(chosen);
+  const n = chosen.length;
+  scanFinds = [];
+  clearScanFiles();
+  setScanState("idle");
+  flashStatus(`${n} tape${n===1?"":"s"} added to your shelf.`);
+}
+
+function addMoviesToShelf(list){
+  const emptyEl = document.getElementById("empty");
+  list.forEach(m=>{
+    const id = "added-" + m.title.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/(^-|-$)/g,"");
+    if(MOVIES.some(x=>x.id===id)) return;
+    const movie = {
+      id, title:m.title, year:m.year, genre:m.genre, director:m.director,
+      runtime:m.runtime, cast:[...m.cast], synopsis:m.synopsis,
+      label:m.label, ink:m.ink, tilt:m.tilt,
+      source:"Detected from your screenshots in the Scan Room.",
+      seedWatched:false
+    };
+    MOVIES.push(movie);
+    const card = buildCard(movie);
+    card.style.display = matches(id) ? "" : "none";
+    card.style.animation = "tape-in .42s cubic-bezier(.22,1,.36,1) both";
+    grid.insertBefore(card, emptyEl);
+  });
+  updateCounts();
+  saveOrder();
+  saveAdded();
+}
+
+function initScan(){ renderScan(); }
+
+loadAdded();
+loadState();
+loadOrder();
+render();
+updateCounts();
+applyFilter();
+initDrag();
+initScan();
+</script>
+</body>
+</html>

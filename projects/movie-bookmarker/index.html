@@ -1,0 +1,1309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<title>Movie Bookmarker — Prototype</title>
+<style>
+  :root {
+    --bg-room: #ebe7e0;
+    --bg-screen: #fafaf7;
+    --ink: #19181c;
+    --ink-2: #6a6a72;
+    --ink-3: #a4a4ad;
+    --hairline: rgba(15, 15, 20, 0.08);
+    --pill: rgba(245, 243, 240, 0.78);
+    --pill-stroke: rgba(15, 15, 20, 0.06);
+    --shadow-cover: 0 1px 1px rgba(20, 20, 30, 0.04),
+                    0 6px 10px -2px rgba(20, 20, 30, 0.08),
+                    0 24px 30px -8px rgba(20, 20, 30, 0.12);
+    --shadow-cover-hero: 0 2px 2px rgba(20, 20, 30, 0.06),
+                         0 12px 20px -4px rgba(20, 20, 30, 0.12),
+                         0 40px 60px -16px rgba(20, 20, 30, 0.22);
+    --ease-physical: cubic-bezier(0.22, 0.72, 0.18, 1);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    color: var(--ink);
+    background:
+      radial-gradient(120% 80% at 30% 0%, #f4f0e8 0%, #e3ddd2 60%, #d6cfc1 100%);
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: geometricPrecision;
+  }
+
+  /* ---------- Phone frame ---------- */
+  .stage {
+    position: fixed;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    padding: 24px;
+  }
+  .device {
+    position: relative;
+    width: 392px;
+    height: 820px;
+    border-radius: 56px;
+    padding: 12px;
+    background: linear-gradient(160deg, #2b2b30 0%, #15151a 50%, #0c0c10 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 -1px 0 rgba(0,0,0,0.5) inset,
+      0 30px 50px -20px rgba(0,0,0,0.45),
+      0 60px 120px -30px rgba(0,0,0,0.35);
+  }
+  .device::before {
+    /* outer chrome ring */
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 56px;
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.06) inset,
+      0 0 0 2px rgba(0,0,0,0.7) inset;
+    pointer-events: none;
+  }
+  .screen {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 46px;
+    overflow: hidden;
+    background: var(--bg-screen);
+    isolation: isolate;
+  }
+  .notch {
+    position: absolute;
+    top: 11px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 110px;
+    height: 32px;
+    background: #0b0b0e;
+    border-radius: 22px;
+    z-index: 80;
+    pointer-events: none;
+    box-shadow: 0 1px 1px rgba(255,255,255,0.04) inset;
+  }
+  .notch::after {
+    /* tiny camera dot */
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 14px;
+    transform: translateY(-50%);
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: radial-gradient(circle at 30% 30%, #2a2a30 0%, #0a0a0d 70%);
+    box-shadow: 0 0 0 1px rgba(255,255,255,0.05);
+  }
+
+  @media (max-width: 500px), (max-height: 880px) {
+    .stage { padding: 0; }
+    .device {
+      width: 100vw;
+      height: 100vh;
+      max-width: none;
+      max-height: none;
+      border-radius: 0;
+      padding: 0;
+      background: var(--bg-screen);
+      box-shadow: none;
+    }
+    .device::before { display: none; }
+    .screen { border-radius: 0; }
+    .notch { display: none; }
+  }
+
+  /* ---------- Status bar ---------- */
+  .status-bar {
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 54px;
+    z-index: 70;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 30px 0;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+    pointer-events: none;
+  }
+  .status-bar__right { display: flex; align-items: center; gap: 6px; }
+  .status-bar__right svg { display: block; }
+
+  /* ---------- Header ---------- */
+  .header {
+    position: absolute;
+    top: 54px;
+    left: 0;
+    right: 0;
+    z-index: 60;
+    padding: 8px 0 0;
+    text-align: center;
+    pointer-events: none;
+  }
+  .header__title {
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: var(--ink);
+  }
+  .pill {
+    margin: 14px auto 0;
+    height: 44px;
+    width: max-content;
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    background: var(--pill);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid var(--pill-stroke);
+    border-radius: 999px;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.6) inset,
+      0 6px 16px -8px rgba(0,0,0,0.18);
+    pointer-events: auto;
+  }
+  .pill__btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 999px;
+    background: transparent;
+    border: none;
+    display: grid;
+    place-items: center;
+    color: var(--ink);
+    cursor: pointer;
+    transition: background 200ms ease;
+  }
+  .pill__btn:active { background: rgba(0,0,0,0.05); }
+  .pill__btn svg { display: block; }
+  .pill__count {
+    padding: 0 8px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  /* ---------- Plane viewport ---------- */
+  .viewport {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 10;
+    background:
+      radial-gradient(140% 80% at 50% 30%, #fdfdfb 0%, #f3f1ec 70%, #e7e3dc 100%);
+  }
+  .viewport::before {
+    /* subtle paper grain via SVG noise (data URI) */
+    content: "";
+    position: absolute;
+    inset: -10%;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0'/></filter><rect width='220' height='220' filter='url(%23n)'/></svg>");
+    opacity: 0.7;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+  }
+  .plane {
+    position: absolute;
+    top: 0;
+    left: 0;
+    transform-origin: 0 0;
+    will-change: transform;
+    touch-action: none;
+    -webkit-user-select: none;
+    user-select: none;
+    transition: filter 380ms var(--ease-physical), opacity 380ms var(--ease-physical);
+  }
+  .plane.is-dimmed {
+    filter: blur(6px) saturate(85%);
+    opacity: 0.35;
+  }
+
+  /* ---------- Cover ---------- */
+  .cover {
+    --w: 210px;
+    --h: 336px;
+    position: absolute;
+    width: var(--w);
+    height: var(--h);
+    border-radius: 5px;
+    overflow: hidden;
+    background: #1a1a1f;
+    box-shadow: var(--shadow-cover);
+    transform-origin: 50% 50%;
+    cursor: pointer;
+    will-change: transform;
+    isolation: isolate;
+  }
+  .cover[data-hidden="true"] { visibility: hidden; }
+  .cover__art {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    padding: 18px 14px;
+    color: #fff;
+    text-align: center;
+  }
+  .cover__poster {
+    /* full-bleed theatrical poster behind all the chrome */
+    position: absolute;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    z-index: 1;
+  }
+  .cover__spine {
+    /* thin white-ish band at very top, classic VHS sleeve edge */
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 8px;
+    background: rgba(255,255,255,0.85);
+    box-shadow: 0 1px 0 rgba(0,0,0,0.15);
+    z-index: 3;
+  }
+  .cover__studio {
+    position: absolute;
+    top: 14px;
+    left: 12px;
+    width: 26px;
+    height: 26px;
+    border-radius: 4px;
+    display: grid;
+    place-items: center;
+    font-size: 8px;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: #fff;
+    z-index: 4;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.25), inset 0 0 0 1px rgba(255,255,255,0.18);
+  }
+  .cover__rating {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: #b91d1d;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 800;
+    display: grid;
+    place-items: center;
+    z-index: 4;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.3), inset 0 0 0 1px rgba(255,255,255,0.18);
+  }
+  .cover__title {
+    font-weight: 900;
+    line-height: 0.92;
+    letter-spacing: -0.01em;
+    color: #fff;
+    z-index: 2;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .cover__title span { display: block; }
+  .cover__tagline {
+    margin-top: 8px;
+    font-size: 7px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    opacity: 0.7;
+    z-index: 2;
+  }
+  .cover__sheen {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    background:
+      linear-gradient(118deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 14%, transparent 32%, transparent 60%, rgba(255,255,255,0.04) 80%, rgba(255,255,255,0.18) 100%);
+    mix-blend-mode: screen;
+  }
+  .cover__plastic {
+    /* subtle plastic case reflection edge */
+    position: absolute;
+    inset: 0;
+    z-index: 6;
+    pointer-events: none;
+    border-radius: 5px;
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.25),
+      inset 0 0 0 1px rgba(255,255,255,0.06),
+      inset 0 -1px 0 rgba(0,0,0,0.3);
+  }
+
+  /* Title style variants */
+  .ts-serif span { font-family: "Times New Roman", "Times", serif; font-style: italic; }
+  .ts-serif-block span { font-family: "Times New Roman", "Times", serif; font-weight: 900; letter-spacing: -0.02em; }
+  .ts-condensed span { font-family: "Impact", "Oswald", "Arial Narrow", sans-serif; letter-spacing: 0.01em; }
+  .ts-stencil span { font-family: "Impact", sans-serif; letter-spacing: 0.18em; }
+  .ts-display span { font-family: "Arial Black", "Helvetica Neue", sans-serif; letter-spacing: -0.02em; }
+  .ts-wide span { font-family: "Arial Black", sans-serif; transform: scaleY(1.25); transform-origin: 50% 50%; }
+  .ts-tiny { font-size: 14px; }
+  .ts-sm { font-size: 18px; }
+  .ts-md { font-size: 22px; }
+  .ts-lg { font-size: 28px; }
+  .ts-xl { font-size: 34px; }
+
+  /* ---------- Hero stage ---------- */
+  .hero-stage {
+    position: absolute;
+    inset: 0;
+    z-index: 90;
+    pointer-events: none;
+    background: rgba(250,250,247,0);
+    transition: background 360ms var(--ease-physical);
+  }
+  .hero-stage.is-active { pointer-events: auto; background: rgba(250,250,247,0.92); }
+
+  .hero-close {
+    position: absolute;
+    top: 70px;
+    left: 50%;
+    transform: translateX(-50%) scale(0.85);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background: rgba(15, 15, 20, 0.06);
+    border: none;
+    color: var(--ink);
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    opacity: 0;
+    transition: opacity 240ms ease, transform 320ms var(--ease-physical), background 200ms ease;
+    z-index: 95;
+    backdrop-filter: blur(8px);
+  }
+  .hero-close:active { background: rgba(15,15,20,0.12); }
+  .hero-stage.is-active .hero-close { opacity: 1; transform: translateX(-50%) scale(1); }
+
+  /* Cassette layer — positioned absolutely behind the cover at the hero target */
+  .cassette-layer {
+    position: absolute;
+    z-index: 92;
+    pointer-events: none;
+    opacity: 0;
+    transform-origin: 20% 50%;
+  }
+  .cassette-layer.is-revealing {
+    animation: cassetteSlide 540ms var(--ease-physical) forwards;
+  }
+  .cassette-layer.is-collapsing {
+    animation: cassetteSlideBack 520ms var(--ease-physical) forwards;
+  }
+  @keyframes cassetteSlide {
+    0%   { transform: translateX(0) translateY(0) rotate(0deg); opacity: 0; }
+    30%  { opacity: 1; }
+    100% { transform: translateX(58%) translateY(-4%) rotate(-2.6deg); opacity: 1; }
+  }
+  @keyframes cassetteSlideBack {
+    0%   { transform: translateX(58%) translateY(-4%) rotate(-2.6deg); opacity: 1; }
+    100% { transform: translateX(0) translateY(0) rotate(0deg); opacity: 0; }
+  }
+
+  .cassette {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    border-radius: 4px;
+    background: linear-gradient(180deg, #1a1a1d 0%, #0a0a0c 100%);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.06) inset,
+      0 -1px 0 rgba(0,0,0,0.6) inset,
+      0 8px 14px -2px rgba(0,0,0,0.2),
+      0 22px 30px -8px rgba(0,0,0,0.28);
+    overflow: hidden;
+  }
+  .cassette__top {
+    position: absolute;
+    top: 8%; left: 6%; right: 6%;
+    height: 38%;
+    background: linear-gradient(180deg, #f4f1e8 0%, #e6e1d3 100%);
+    border-radius: 2px;
+    box-shadow: 0 1px 0 rgba(0,0,0,0.2), inset 0 0 0 1px rgba(0,0,0,0.05);
+  }
+  .cassette__top::before {
+    /* faint horizontal lines */
+    content: "";
+    position: absolute;
+    inset: 8% 8% 30% 8%;
+    background: repeating-linear-gradient(
+      to bottom,
+      transparent 0px,
+      transparent 5px,
+      rgba(0,0,0,0.07) 5px,
+      rgba(0,0,0,0.07) 6px
+    );
+    opacity: 0.55;
+  }
+  .cassette__sticker {
+    position: absolute;
+    right: 12%;
+    top: 18%;
+    width: 36%;
+    height: 28%;
+    background: radial-gradient(ellipse at 40% 35%, #e63a3a 0%, #b51d1d 60%, #841414 100%);
+    border-radius: 999px;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(255,255,255,0.18);
+    display: grid;
+    place-items: center;
+    color: #fff;
+    font-size: 7px;
+    font-weight: 800;
+    letter-spacing: 0.1em;
+    text-align: center;
+  }
+  .cassette__window {
+    position: absolute;
+    left: 10%; right: 10%;
+    top: 52%;
+    height: 26%;
+    background: linear-gradient(180deg, #050507 0%, #131316 60%, #1c1c1f 100%);
+    border-radius: 2px;
+    box-shadow:
+      inset 0 0 0 1px rgba(255,255,255,0.04),
+      inset 0 2px 4px rgba(0,0,0,0.7);
+    overflow: hidden;
+  }
+  .cassette__reel {
+    position: absolute;
+    top: 50%;
+    width: 30%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background:
+      radial-gradient(circle at 50% 50%, #2a2a2e 0 18%, transparent 18.5%),
+      conic-gradient(from 0deg, #1a1a1d, #2a2a2d, #1a1a1d, #2a2a2d, #1a1a1d, #2a2a2d, #1a1a1d, #2a2a2d, #1a1a1d);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.06),
+      inset 0 0 0 2px rgba(0,0,0,0.5);
+    transform: translateY(-50%);
+  }
+  .cassette__reel--l { left: 8%; }
+  .cassette__reel--r { right: 8%; }
+  .cassette__reel::after {
+    content: "";
+    position: absolute;
+    inset: 38%;
+    border-radius: 50%;
+    background: radial-gradient(circle, #5a5a60 0%, #2a2a2e 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+  }
+  .cassette__tape {
+    position: absolute;
+    left: 20%;
+    right: 20%;
+    top: 60%;
+    height: 6%;
+    background: linear-gradient(180deg, #2a2a2d 0%, #15151a 100%);
+    border-radius: 1px;
+    opacity: 0.85;
+  }
+  .cassette__bottom {
+    position: absolute;
+    left: 6%; right: 6%;
+    bottom: 4%;
+    height: 14%;
+    background: repeating-linear-gradient(
+      to right,
+      #0a0a0c 0px,
+      #0a0a0c 2px,
+      #1c1c1e 2px,
+      #1c1c1e 4px
+    );
+    border-radius: 1px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.04);
+  }
+  .cassette__edge {
+    position: absolute;
+    top: 0; bottom: 0;
+    width: 4px;
+    background: linear-gradient(180deg, #2a2a2d 0%, #0a0a0c 100%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+  }
+  .cassette__edge--l { left: 0; border-radius: 4px 0 0 4px; }
+  .cassette__edge--r { right: 0; border-radius: 0 4px 4px 0; }
+
+  /* Hero cover overlay (clone of the tapped cover) — child of heroStage so screen overflow clips it */
+  .hero-cover {
+    position: absolute;
+    z-index: 94;
+    pointer-events: none;
+    will-change: transform;
+    transform-origin: 50% 50%;
+    box-shadow: var(--shadow-cover-hero);
+  }
+  /* Note: cover flight is driven by Web Animations API (clone.animate) — no CSS transition needed. */
+
+  /* Hide header during hero so the focal object owns the top */
+  .screen.is-hero .header { opacity: 0; pointer-events: none; transition: opacity 280ms var(--ease-physical); }
+  .screen .header { transition: opacity 280ms var(--ease-physical); }
+
+  /* Metadata sheet */
+  .hero-meta {
+    position: absolute;
+    left: 0; right: 0;
+    bottom: 0;
+    z-index: 93;
+    padding: 16px 24px 24px;
+    pointer-events: none;
+  }
+  .hero-meta__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 13.5px;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 360ms var(--ease-physical), transform 360ms var(--ease-physical);
+  }
+  .hero-meta__row .k { color: var(--ink-2); font-weight: 500; letter-spacing: -0.005em; }
+  .hero-meta__row .v { color: var(--ink); font-weight: 500; letter-spacing: -0.005em; }
+  .hero-meta__title {
+    margin-top: 14px;
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--ink);
+    letter-spacing: -0.015em;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 360ms var(--ease-physical), transform 360ms var(--ease-physical);
+  }
+  .hero-meta__synopsis {
+    margin-top: 8px;
+    font-size: 13.5px;
+    line-height: 1.45;
+    color: var(--ink-2);
+    letter-spacing: -0.005em;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 360ms var(--ease-physical), transform 360ms var(--ease-physical);
+  }
+  .hero-meta__tags {
+    margin-top: 12px;
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 360ms var(--ease-physical), transform 360ms var(--ease-physical);
+  }
+  .hero-meta__tag {
+    padding: 7px 12px;
+    border-radius: 999px;
+    background: rgba(15,15,20,0.05);
+    font-size: 12px;
+    color: var(--ink);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+  }
+  .hero-stage.is-active .hero-meta__row,
+  .hero-stage.is-active .hero-meta__title,
+  .hero-stage.is-active .hero-meta__synopsis,
+  .hero-stage.is-active .hero-meta__tags {
+    opacity: 1; transform: translateY(0);
+  }
+
+  /* Progressive blur "lens": a backdrop-filter layer masked to a radial gradient so the
+     viewport's central ~40% stays sharp and the edges defocus toward the corners. Sits above
+     the plane and below the color vignette so the two effects compose. */
+  .viewport__blur {
+    position: absolute;
+    inset: 0;
+    z-index: 49;
+    pointer-events: none;
+    backdrop-filter: blur(3px);
+    -webkit-backdrop-filter: blur(3px);
+    -webkit-mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 0%, transparent 52%, rgba(0,0,0,0.55) 82%, #000 100%);
+            mask-image: radial-gradient(ellipse 80% 70% at 50% 50%, transparent 0%, transparent 52%, rgba(0,0,0,0.55) 82%, #000 100%);
+  }
+
+  /* edge hint gradients on viewport — subtle vignette so off-screen covers blend out softly */
+  .viewport::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: 50;
+    pointer-events: none;
+    background:
+      linear-gradient(to bottom, rgba(250,250,247,0.92) 0%, transparent 14%, transparent 86%, rgba(250,250,247,0.6) 100%),
+      linear-gradient(to right, rgba(250,250,247,0.4) 0%, transparent 8%, transparent 92%, rgba(250,250,247,0.4) 100%);
+  }
+
+  /* small footer credit */
+  .hint {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 11px;
+    color: rgba(15,15,20,0.32);
+    letter-spacing: -0.005em;
+    z-index: 55;
+    pointer-events: none;
+    transition: opacity 240ms ease;
+  }
+  .hero-stage.is-active ~ .hint { opacity: 0; }
+</style>
+</head>
+<body>
+  <div class="stage">
+    <div class="device" aria-label="Phone preview">
+      <div class="screen" id="screen">
+        <div class="notch" aria-hidden="true"></div>
+
+        <!-- Status bar -->
+        <div class="status-bar" aria-hidden="true">
+          <span>9:41</span>
+          <span class="status-bar__right">
+            <!-- signal -->
+            <svg width="18" height="11" viewBox="0 0 18 11" fill="currentColor"><rect x="0" y="7" width="3" height="4" rx="0.5"/><rect x="5" y="5" width="3" height="6" rx="0.5"/><rect x="10" y="2.5" width="3" height="8.5" rx="0.5"/><rect x="15" y="0" width="3" height="11" rx="0.5"/></svg>
+            <!-- wifi -->
+            <svg width="16" height="11" viewBox="0 0 16 11" fill="currentColor"><path d="M8 11l2.2-2.2a3.1 3.1 0 0 0-4.4 0L8 11zM3.1 6.1a7 7 0 0 1 9.8 0l1.6-1.6a9.3 9.3 0 0 0-13 0l1.6 1.6zM.4 3.4a10.8 10.8 0 0 1 15.2 0L17.1 1.9a13 13 0 0 0-18.2 0L.4 3.4z"/></svg>
+            <!-- battery -->
+            <svg width="26" height="12" viewBox="0 0 26 12" fill="none"><rect x="0.5" y="0.5" width="22" height="11" rx="3" stroke="currentColor" stroke-opacity="0.4"/><rect x="2" y="2" width="19" height="8" rx="1.5" fill="currentColor"/><rect x="23.5" y="3.5" width="1.5" height="5" rx="0.5" fill="currentColor" fill-opacity="0.4"/></svg>
+          </span>
+        </div>
+
+        <!-- Header (above plane) -->
+        <header class="header">
+          <h1 class="header__title">Your Collection</h1>
+          <div class="pill" role="toolbar" aria-label="Collection controls">
+            <button class="pill__btn" aria-label="Search">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+            </button>
+            <span class="pill__count">394 Movies</span>
+            <button class="pill__btn" aria-label="Add">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </header>
+
+        <!-- Plane viewport -->
+        <div class="viewport" id="viewport">
+          <div class="plane" id="plane"></div>
+          <div class="viewport__blur" aria-hidden="true"></div>
+        </div>
+
+        <!-- Hero stage -->
+        <div class="hero-stage" id="heroStage" aria-hidden="true">
+          <button class="hero-close" id="heroClose" aria-label="Close">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6l12 12M18 6l-12 12"/></svg>
+          </button>
+          <div class="cassette-layer" id="cassetteLayer">
+            <div class="cassette">
+              <span class="cassette__edge cassette__edge--l"></span>
+              <span class="cassette__edge cassette__edge--r"></span>
+              <div class="cassette__top">
+                <div class="cassette__sticker">15</div>
+              </div>
+              <div class="cassette__window">
+                <span class="cassette__reel cassette__reel--l"></span>
+                <span class="cassette__reel cassette__reel--r"></span>
+                <span class="cassette__tape"></span>
+              </div>
+              <div class="cassette__bottom"></div>
+            </div>
+          </div>
+          <div class="hero-meta" id="heroMeta">
+            <div class="hero-meta__row"><span class="k">Last watched</span><span class="v">12/03/2015</span></div>
+            <div class="hero-meta__row"><span class="k">Your rating</span><span class="v">8/10</span></div>
+            <div class="hero-meta__row"><span class="k">Comment</span><span class="v">Nostalgic!</span></div>
+            <div class="hero-meta__title">Lost Boys, 1987</div>
+            <p class="hero-meta__synopsis">Lucy along with her two sons, Michael and Sam, moves to a small town in California. Soon, the two boys are pulled into a mysterious world of bikers, vampires, and vampire hunters.</p>
+            <div class="hero-meta__tags">
+              <span class="hero-meta__tag">Jason Patric</span>
+              <span class="hero-meta__tag">Corey Haim</span>
+              <span class="hero-meta__tag">Teen Horror</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hint">Drag to explore · Tap a cover</div>
+      </div>
+    </div>
+  </div>
+
+<script>
+/* ----------------------------------------------------------
+   Movie cover TEMPLATES — synthetic VHS sleeve designs (CSS only)
+   ---------------------------------------------------------- */
+const TEMPLATES = [
+  { id: 'lost-boys', title: ['THE','LOST','BOYS'], tagline: 'Sleep all day · Party all night', bg:
+      'radial-gradient(120% 80% at 50% 18%, #2d3a55 0%, #15243a 35%, #06101e 80%, #020812 100%)',
+    titleClass: 'ts-serif-block ts-lg', studio: 'WB', studioBg: '#b8a06a', rating: '15' },
+  { id: 'equilibrium', title: ['EQUILIBRIUM'], tagline: 'One man · One battle', bg:
+      'linear-gradient(180deg, #2a2d31 0%, #131418 60%, #07080a 100%)',
+    titleClass: 'ts-condensed ts-sm', studio: 'DIM', studioBg: '#7a7a85', rating: '15' },
+  { id: 'fright',   title: ['FRIGHT'], tagline: '', bg:
+      'radial-gradient(100% 70% at 50% 30%, #f24a3a 0%, #b21e1e 50%, #4a0c10 100%)',
+    titleClass: 'ts-display ts-xl', studio: 'WB', studioBg: '#b8a06a', rating: '18' },
+  { id: 'jeepers',  title: ['JEEPERS','CREEPERS'], tagline: 'Evil is right around the corner', bg:
+      'radial-gradient(80% 60% at 50% 60%, #5a3a08 0%, #1a1208 60%, #050402 100%)',
+    titleClass: 'ts-serif ts-md', studio: 'MGM', studioBg: '#c8a02a', rating: '15' },
+  { id: 'point-break', title: ['POINT','BREAK'], tagline: '100% pure adrenaline', bg:
+      'linear-gradient(180deg, #ffb04a 0%, #e64a1a 45%, #21304a 100%)',
+    titleClass: 'ts-display ts-lg', studio: 'FOX', studioBg: '#0a2a5a', rating: '15' },
+  { id: 'speed',    title: ['SPEED'], tagline: 'Get ready for rush hour', bg:
+      'linear-gradient(180deg, #ffb83a 0%, #ff5a1a 50%, #8a1a0a 100%)',
+    titleClass: 'ts-display ts-xl', studio: 'FOX', studioBg: '#0a2a5a', rating: '15' },
+  { id: 'heat',     title: ['HEAT'], tagline: 'A Los Angeles crime saga', bg:
+      'linear-gradient(180deg, #2a3a5a 0%, #0e1a2e 50%, #1a1a1f 100%)',
+    titleClass: 'ts-condensed ts-xl', studio: 'WB', studioBg: '#b8a06a', rating: '15' },
+  { id: 'recall',   title: ['TOTAL','RECALL'], tagline: 'They stole his mind. Now he wants it back.', bg:
+      'radial-gradient(100% 70% at 50% 50%, #ff7a2a 0%, #b81a1a 50%, #2a0606 100%)',
+    titleClass: 'ts-stencil ts-md', studio: 'TRI', studioBg: '#2a2a3a', rating: '18' },
+  { id: 'the-crow', title: ['THE','CROW'], tagline: 'Believe in angels', bg:
+      'linear-gradient(180deg, #0a0a0d 0%, #1a0608 60%, #5a0a1a 100%)',
+    titleClass: 'ts-serif-block ts-xl', studio: 'MX', studioBg: '#3a3a4a', rating: '18' },
+  { id: 'near-dark',title: ['NEAR','DARK'], tagline: 'Pray for daylight', bg:
+      'radial-gradient(80% 60% at 50% 30%, #1a3a3a 0%, #0a1818 60%, #050a0e 100%)',
+    titleClass: 'ts-serif-block ts-lg', studio: 'IND', studioBg: '#5a3a2a', rating: '18' },
+  { id: 'robocop',  title: ['ROBOCOP'], tagline: 'Part man · Part machine · All cop', bg:
+      'linear-gradient(180deg, #4a5a6a 0%, #1a2230 60%, #06080e 100%)',
+    titleClass: 'ts-display ts-lg', studio: 'ORI', studioBg: '#a83030', rating: '18' },
+  { id: 'predator', title: ['PREDATOR'], tagline: 'Soon the hunt will begin', bg:
+      'linear-gradient(180deg, #2a3a1a 0%, #0e1a0a 60%, #050a04 100%)',
+    titleClass: 'ts-stencil ts-md', studio: 'FOX', studioBg: '#0a2a5a', rating: '18' },
+  { id: 'big-trouble', title: ['BIG','TROUBLE'], tagline: 'in Little China', bg:
+      'radial-gradient(80% 60% at 50% 35%, #4a8a3a 0%, #1a3a2a 60%, #0a1a14 100%)',
+    titleClass: 'ts-display ts-md', studio: 'FOX', studioBg: '#0a2a5a', rating: '15' },
+  { id: 'escape-ny',title: ['ESCAPE','NEW YORK'], tagline: '1997 · The city is a prison', bg:
+      'linear-gradient(180deg, #1a1a1d 0%, #060608 100%)',
+    titleClass: 'ts-stencil ts-sm', studio: 'AVC', studioBg: '#a03030', rating: '18' },
+  { id: 'society',  title: ['SOCIETY'], tagline: 'The rich have always fed on the poor', bg:
+      'linear-gradient(180deg, #c8a02a 0%, #6a5210 50%, #1a1208 100%)',
+    titleClass: 'ts-serif-block ts-xl', studio: 'WIZ', studioBg: '#3a3a4a', rating: '18' },
+  { id: 'tremors',  title: ['TREMORS'], tagline: 'They live · They breed · They eat', bg:
+      'linear-gradient(180deg, #d8a86a 0%, #8a5a2a 50%, #2a1808 100%)',
+    titleClass: 'ts-display ts-xl', studio: 'UNI', studioBg: '#0e2a4a', rating: '15' },
+  { id: 'thing',    title: ['THE','THING'], tagline: 'Man is the warmest place to hide', bg:
+      'radial-gradient(80% 60% at 50% 40%, #2a4a8a 0%, #0e1a3a 60%, #04081a 100%)',
+    titleClass: 'ts-display ts-xl', studio: 'UNI', studioBg: '#0e2a4a', rating: '18' },
+  { id: 'fly',      title: ['THE','FLY'], tagline: 'Be afraid · Be very afraid', bg:
+      'radial-gradient(80% 60% at 50% 50%, #6a8a3a 0%, #2a3a1a 60%, #0a1208 100%)',
+    titleClass: 'ts-serif-block ts-xl', studio: 'FOX', studioBg: '#0a2a5a', rating: '18' },
+  { id: 'highlander', title: ['HIGHLANDER'], tagline: 'There can be only one', bg:
+      'linear-gradient(180deg, #1a2a3a 0%, #0a121e 60%, #050810 100%)',
+    titleClass: 'ts-serif ts-sm', studio: 'EMI', studioBg: '#5a3030', rating: '15' },
+  { id: 'they-live',title: ['THEY','LIVE'], tagline: 'Obey · Consume · Submit', bg:
+      'linear-gradient(180deg, #2a2a2e 0%, #0a0a0e 100%)',
+    titleClass: 'ts-stencil ts-md', studio: 'UNI', studioBg: '#0e2a4a', rating: '15' },
+  { id: 'akira',    title: ['AKIRA'], tagline: 'Neo Tokyo is about to explode', bg:
+      'radial-gradient(80% 60% at 50% 60%, #e62a2a 0%, #7a0a0a 50%, #1a0608 100%)',
+    titleClass: 'ts-display ts-xl', studio: 'TKE', studioBg: '#1a1a1f', rating: '15' },
+  { id: 'rumble',   title: ['RUMBLE','FISH'], tagline: 'Loyalty is everything', bg:
+      'linear-gradient(180deg, #0a0a0c 0%, #1a1a1f 100%)',
+    titleClass: 'ts-serif ts-md', studio: 'UNI', studioBg: '#0e2a4a', rating: '15' },
+  { id: 'mad-max',  title: ['MAD','MAX'], tagline: 'When the gangs take over the highway', bg:
+      'linear-gradient(180deg, #a8530a 0%, #4a1a08 60%, #0e0606 100%)',
+    titleClass: 'ts-display ts-xl', studio: 'MGM', studioBg: '#c8a02a', rating: '18' },
+  { id: 'evil-dead',title: ['EVIL','DEAD'], tagline: 'The ultimate experience in grueling horror', bg:
+      'radial-gradient(80% 60% at 50% 30%, #4a0a0a 0%, #1a0404 60%, #050202 100%)',
+    titleClass: 'ts-serif-block ts-xl', studio: 'NEW', studioBg: '#3a3a4a', rating: '18' },
+];
+// Each cover's theatrical poster lives at posters/{id}.jpg next to the HTML. If the file is
+// missing (or still downloading), the cover's gradient `bg` stays visible as fallback.
+TEMPLATES.forEach(t => { t.poster = `posters/${t.id}.jpg`; });
+
+/* ----------------------------------------------------------
+   Stable seeded RNG so layout is identical each load
+   ---------------------------------------------------------- */
+function mulberry32(seed) {
+  return function() {
+    let t = (seed += 0x6D2B79F5);
+    t = Math.imul(t ^ (t >>> 15), t | 1);
+    t ^= t + Math.imul(t ^ (t >>> 7), t | 61);
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ----------------------------------------------------------
+   Generate ~50 cover slots scattered across the plane
+   ---------------------------------------------------------- */
+const PLANE_W = 1320;
+const PLANE_H = 5400;
+const COVER_W = 210;
+const COVER_H = 336;
+
+function buildSlots() {
+  const rand = mulberry32(13);
+  const slots = [];
+  const cols = 4;
+  const rows = 13;
+  const colSpan = (PLANE_W - 100) / cols;
+  const rowSpan = (PLANE_H - 240) / rows;
+  // build template order via coprime stride so each template appears evenly
+  const stride = 11; // gcd(11, 24) = 1
+  let idx = 0;
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (slots.length >= 50) break;
+      const stagger = (r % 2 === 0 ? 0 : colSpan * 0.32);
+      const baseCX = 50 + c * colSpan + colSpan / 2 + stagger;
+      const baseCY = 160 + r * rowSpan + rowSpan / 2;
+      const jitterX = (rand() - 0.5) * (colSpan * 0.42);
+      const jitterY = (rand() - 0.5) * (rowSpan * 0.36);
+      const rot = (rand() - 0.5) * 18;   // -9..9 deg
+      const scale = 0.78 + rand() * 0.40; // 0.78..1.18
+      const cx = baseCX + jitterX;
+      const cy = baseCY + jitterY;
+      const tplIndex = (idx * stride) % TEMPLATES.length;
+      slots.push({
+        id: 'slot-' + idx,
+        cx, cy, rot, scale,
+        template: TEMPLATES[tplIndex],
+      });
+      idx++;
+    }
+  }
+  return slots;
+}
+
+const SLOTS = buildSlots();
+
+/* ----------------------------------------------------------
+   Render the plane
+   ---------------------------------------------------------- */
+const plane = document.getElementById('plane');
+const viewport = document.getElementById('viewport');
+const screen = document.getElementById('screen');
+const heroStage = document.getElementById('heroStage');
+const cassetteLayer = document.getElementById('cassetteLayer');
+const heroClose = document.getElementById('heroClose');
+
+plane.style.width = PLANE_W + 'px';
+plane.style.height = PLANE_H + 'px';
+
+function coverInnerHTML(tpl) {
+  // The poster JPG sits at z-index 1 inside the cover. If it fails to load, the cover's
+  // background gradient (tpl.bg, applied to .cover itself) shows through as fallback.
+  const poster = tpl.poster
+    ? `<div class="cover__poster" style="background-image:url('${tpl.poster}')"></div>`
+    : '';
+  return `
+    ${poster}
+    <div class="cover__spine"></div>
+    <div class="cover__studio" style="background:${tpl.studioBg}">${tpl.studio}</div>
+    <div class="cover__rating">${tpl.rating}</div>
+    <div class="cover__sheen"></div>
+    <div class="cover__plastic"></div>
+  `;
+}
+
+function buildPlane() {
+  const frag = document.createDocumentFragment();
+  // Sort so smaller-scale covers render behind larger ones
+  const ordered = [...SLOTS].sort((a, b) => a.scale - b.scale);
+  for (const slot of ordered) {
+    const el = document.createElement('div');
+    el.className = 'cover';
+    el.dataset.id = slot.id;
+    el.style.left = (slot.cx - COVER_W / 2) + 'px';
+    el.style.top = (slot.cy - COVER_H / 2) + 'px';
+    el.style.transform = `rotate(${slot.rot.toFixed(2)}deg) scale(${slot.scale.toFixed(3)})`;
+    el.style.background = slot.template.bg;
+    el.style.zIndex = Math.round(slot.scale * 100);
+    el.innerHTML = coverInnerHTML(slot.template);
+    frag.appendChild(el);
+  }
+  plane.appendChild(frag);
+}
+buildPlane();
+
+const slotById = new Map(SLOTS.map(s => [s.id, s]));
+
+/* ----------------------------------------------------------
+   Pan state + bounds + inertia
+   ---------------------------------------------------------- */
+let panX = 0, panY = 0;
+let minPanX, maxPanX, minPanY, maxPanY;
+let vx = 0, vy = 0;
+let isDown = false, isDrag = false;
+let downX, downY, downPanX, downPanY;
+let lastT, lastX, lastY;
+let momentumRaf = null;
+let downTarget = null;
+
+function computeBounds() {
+  const vw = viewport.clientWidth;
+  const vh = viewport.clientHeight;
+  // max(0, ...) ensures bounds exist even if plane is smaller than viewport
+  maxPanX = 0;
+  minPanX = Math.min(0, vw - PLANE_W);
+  maxPanY = 0;
+  minPanY = Math.min(0, vh - PLANE_H);
+}
+computeBounds();
+
+// Start a bit off-center so a few covers crop at edges
+panX = Math.max(minPanX, -200);
+panY = Math.max(minPanY, -180);
+
+function apply() {
+  plane.style.transform = `translate3d(${panX.toFixed(2)}px, ${panY.toFixed(2)}px, 0)`;
+}
+apply();
+
+function softBound(p, min, max) {
+  if (p > max) {
+    const over = p - max;
+    return max + Math.sign(over) * Math.sqrt(Math.abs(over)) * 6;
+  }
+  if (p < min) {
+    const over = min - p;
+    return min - Math.sqrt(Math.abs(over)) * 6;
+  }
+  return p;
+}
+
+function cancelMomentum() {
+  if (momentumRaf) cancelAnimationFrame(momentumRaf);
+  momentumRaf = null;
+}
+
+function startMomentum() {
+  cancelMomentum();
+  function tick() {
+    panX += vx;
+    panY += vy;
+    vx *= 0.93;
+    vy *= 0.93;
+    const cx = Math.min(maxPanX, Math.max(minPanX, panX));
+    const cy = Math.min(maxPanY, Math.max(minPanY, panY));
+    if (panX !== cx) {
+      // spring-back when past bounds
+      vx += (cx - panX) * 0.18;
+      vx *= 0.55;
+    }
+    if (panY !== cy) {
+      vy += (cy - panY) * 0.18;
+      vy *= 0.55;
+    }
+    apply();
+    const settled = Math.abs(vx) < 0.25 && Math.abs(vy) < 0.25 && panX === cx && panY === cy;
+    if (!settled) {
+      momentumRaf = requestAnimationFrame(tick);
+    } else {
+      panX = cx; panY = cy; apply();
+      momentumRaf = null;
+    }
+  }
+  momentumRaf = requestAnimationFrame(tick);
+}
+
+plane.addEventListener('pointerdown', (e) => {
+  if (heroOpen) return;
+  isDown = true;
+  isDrag = false;
+  downX = e.clientX;
+  downY = e.clientY;
+  downPanX = panX;
+  downPanY = panY;
+  lastT = performance.now();
+  lastX = e.clientX;
+  lastY = e.clientY;
+  vx = 0; vy = 0;
+  downTarget = e.target.closest('.cover');
+  cancelMomentum();
+  plane.setPointerCapture(e.pointerId);
+});
+
+plane.addEventListener('pointermove', (e) => {
+  if (!isDown) return;
+  const dx = e.clientX - downX;
+  const dy = e.clientY - downY;
+  if (!isDrag && Math.hypot(dx, dy) > 6) isDrag = true;
+  if (isDrag) {
+    let nx = downPanX + dx;
+    let ny = downPanY + dy;
+    nx = softBound(nx, minPanX, maxPanX);
+    ny = softBound(ny, minPanY, maxPanY);
+    panX = nx; panY = ny;
+    apply();
+    const now = performance.now();
+    const dt = Math.max(now - lastT, 1);
+    // velocity in px per ~16ms frame
+    vx = ((e.clientX - lastX) / dt) * 16;
+    vy = ((e.clientY - lastY) / dt) * 16;
+    lastT = now; lastX = e.clientX; lastY = e.clientY;
+  }
+});
+
+plane.addEventListener('pointerup', (e) => {
+  if (!isDown) return;
+  isDown = false;
+  try { plane.releasePointerCapture(e.pointerId); } catch (_) {}
+  if (isDrag) {
+    startMomentum();
+  } else if (downTarget) {
+    openHero(downTarget);
+  }
+  downTarget = null;
+});
+
+plane.addEventListener('pointercancel', () => {
+  if (isDown) {
+    isDown = false;
+    if (isDrag) startMomentum();
+  }
+  downTarget = null;
+});
+
+window.addEventListener('resize', () => {
+  computeBounds();
+  panX = Math.min(maxPanX, Math.max(minPanX, panX));
+  panY = Math.min(maxPanY, Math.max(minPanY, panY));
+  apply();
+});
+
+/* ----------------------------------------------------------
+   Shared-element transition to hero
+   ---------------------------------------------------------- */
+let heroOpen = false;
+let heroCover = null;     // the floating clone element
+let heroSourceEl = null;  // the original cover element (hidden during hero)
+let heroSlot = null;
+let metaTimers = [];
+let heroGen = 0;          // increments on every openHero so stale timers can detect their session is dead
+
+function clearMetaTimers() {
+  metaTimers.forEach(t => clearTimeout(t));
+  metaTimers = [];
+}
+
+// Hero target geometry: where the cover should land in heroStage-LOCAL coords
+function getHeroTarget() {
+  const stageRect = heroStage.getBoundingClientRect();
+  const heroW = 220;
+  const heroH = heroW * (COVER_H / COVER_W);
+  // Position slightly left-of-center so the cassette can slide out to the right
+  const centerX = stageRect.width / 2 - heroW * 0.10;
+  const centerY = 130 + heroH / 2; // ~130px below top of screen (status bar + X button breathing room)
+  return {
+    centerX, centerY,
+    width: heroW, height: heroH,
+    scale: heroW / COVER_W,
+    stageRect,
+  };
+}
+
+// Resolved shadow values for WAAPI keyframes (CSS vars don't auto-resolve inside .animate())
+const SHADOW_COVER = getComputedStyle(document.documentElement).getPropertyValue('--shadow-cover').trim();
+const SHADOW_COVER_HERO = getComputedStyle(document.documentElement).getPropertyValue('--shadow-cover-hero').trim();
+
+const FLIGHT_DURATION = 680;
+const FLIGHT_EASING = 'cubic-bezier(.22, .72, .18, 1)';
+const ARC_LIFT = 28; // px the midpoint Y is raised toward the viewer — the "small curve"
+
+// Animate a cover element from one transform/shadow state to another along a gently arced path.
+// The arc is achieved via a 3-keyframe WAAPI animation whose midpoint Y is offset upward by ARC_LIFT.
+function animateCoverFlight(el, opts) {
+  const midTx = (opts.startTx + opts.endTx) / 2;
+  const midTy = (opts.startTy + opts.endTy) / 2 - ARC_LIFT;
+  const midRot = (opts.startRot + opts.endRot) / 2;
+  const midScale = (opts.startScale + opts.endScale) / 2;
+  return el.animate([
+    { transform: `translate(${opts.startTx}px, ${opts.startTy}px) rotate(${opts.startRot}deg) scale(${opts.startScale})`,
+      boxShadow: opts.startShadow },
+    { transform: `translate(${midTx}px, ${midTy}px) rotate(${midRot}deg) scale(${midScale})`,
+      offset: 0.5 },
+    { transform: `translate(${opts.endTx}px, ${opts.endTy}px) rotate(${opts.endRot}deg) scale(${opts.endScale})`,
+      boxShadow: opts.endShadow },
+  ], { duration: FLIGHT_DURATION, easing: FLIGHT_EASING, fill: 'forwards' });
+}
+
+function openHero(coverEl) {
+  if (heroOpen) return;
+
+  // If a previous close is still in-flight, its setTimeout cleanup hasn't fired yet —
+  // synchronously tear down what it would have, so we don't leave an orphan clone in the DOM
+  // (and so the previous source isn't stuck invisible if we're re-opening the same one).
+  if (heroCover && heroCover.parentNode) heroCover.parentNode.removeChild(heroCover);
+  if (heroSourceEl) heroSourceEl.dataset.hidden = 'false';
+  heroCover = null;
+  heroSourceEl = null;
+  heroSlot = null;
+  clearMetaTimers();
+  cassetteLayer.classList.remove('is-revealing', 'is-collapsing');
+
+  const slot = slotById.get(coverEl.dataset.id);
+  if (!slot) return;
+  heroOpen = true;
+  heroSlot = slot;
+  heroSourceEl = coverEl;
+  const gen = ++heroGen;
+
+  const tgt = getHeroTarget();
+
+  // Measure source in heroStage-LOCAL coords
+  const srcRect = coverEl.getBoundingClientRect();
+  const srcLocalCX = srcRect.left + srcRect.width / 2 - tgt.stageRect.left;
+  const srcLocalCY = srcRect.top + srcRect.height / 2 - tgt.stageRect.top;
+
+  // Build the floating clone, append to heroStage so screen overflow:hidden clips it
+  const clone = document.createElement('div');
+  clone.className = 'cover hero-cover';
+  clone.style.width = COVER_W + 'px';
+  clone.style.height = COVER_H + 'px';
+  clone.style.left = '0';
+  clone.style.top = '0';
+  clone.style.background = slot.template.bg;
+  clone.innerHTML = coverInnerHTML(slot.template);
+  // Initial transform + shadow: match the source exactly so the first frame of the animation
+  // looks identical to the source the user just tapped on.
+  const startTx = srcLocalCX - COVER_W / 2;
+  const startTy = srcLocalCY - COVER_H / 2;
+  clone.style.transform = `translate(${startTx}px, ${startTy}px) rotate(${slot.rot}deg) scale(${slot.scale})`;
+  clone.style.boxShadow = SHADOW_COVER;
+  heroStage.appendChild(clone);
+  heroCover = clone;
+
+  // Hide source so the clone takes its visual place
+  coverEl.dataset.hidden = 'true';
+
+  // Position the cassette layer at the hero cover's resting position (stage-local)
+  const cassetteW = tgt.width * 0.92;
+  const cassetteH = tgt.height * 1.02;
+  cassetteLayer.style.left = (tgt.centerX - cassetteW / 2) + 'px';
+  cassetteLayer.style.top = (tgt.centerY - cassetteH / 2) + 'px';
+  cassetteLayer.style.width = cassetteW + 'px';
+  cassetteLayer.style.height = cassetteH + 'px';
+  // The cassette label sticker shows the movie's age rating; without this it'd always say "15"
+  const sticker = cassetteLayer.querySelector('.cassette__sticker');
+  if (sticker) sticker.textContent = slot.template.rating;
+
+  // Dim plane + activate hero stage + hide header
+  plane.classList.add('is-dimmed');
+  heroStage.classList.add('is-active');
+  heroStage.setAttribute('aria-hidden', 'false');
+  screen.classList.add('is-hero');
+
+  // Cover flight: arc upward from source to hero, shadow grows to hero-shadow.
+  const endTx = tgt.centerX - COVER_W / 2;
+  const endTy = tgt.centerY - COVER_H / 2;
+  animateCoverFlight(clone, {
+    startTx, startTy, startRot: slot.rot, startScale: slot.scale, startShadow: SHADOW_COVER,
+    endTx,   endTy,   endRot: 0,         endScale: tgt.scale,    endShadow: SHADOW_COVER_HERO,
+  });
+
+  // After cover lands, slide cassette — gated by gen so a stale openHero timer can't fire after the user
+  // has already closed this hero and opened a different one.
+  const coverArrive = 680;
+  const cassetteArrive = coverArrive + 540;
+  metaTimers.push(setTimeout(() => {
+    if (gen !== heroGen) return;
+    cassetteLayer.classList.remove('is-collapsing');
+    cassetteLayer.classList.add('is-revealing');
+  }, coverArrive - 80));
+
+  // Metadata is fading in via .hero-stage.is-active rules; we stagger via inline delay
+  const rows = heroStage.querySelectorAll('.hero-meta__row');
+  const baseDelay = coverArrive + 360;
+  rows.forEach((row, i) => {
+    row.style.transitionDelay = (baseDelay + i * 80) + 'ms';
+  });
+  const title = heroStage.querySelector('.hero-meta__title');
+  const synopsis = heroStage.querySelector('.hero-meta__synopsis');
+  const tags = heroStage.querySelector('.hero-meta__tags');
+  title.style.transitionDelay = (baseDelay + 320) + 'ms';
+  synopsis.style.transitionDelay = (baseDelay + 400) + 'ms';
+  tags.style.transitionDelay = (baseDelay + 480) + 'ms';
+}
+
+function closeHero() {
+  if (!heroOpen || !heroCover || !heroSourceEl || !heroSlot) return;
+  heroOpen = false;
+  clearMetaTimers();
+
+  // Capture this session's refs locally. The cleanup setTimeout below must NOT touch the globals
+  // if a new openHero has taken over by the time it fires — otherwise rapid back-and-forth taps
+  // would remove the NEW clone and unhide the NEW source, breaking the next hero state.
+  const myGen = heroGen;
+  const cloneAtClose = heroCover;
+  const sourceAtClose = heroSourceEl;
+
+  // Reverse metadata immediately (clear stagger delays so meta fades out together)
+  const allMeta = heroStage.querySelectorAll('.hero-meta__row, .hero-meta__title, .hero-meta__synopsis, .hero-meta__tags');
+  allMeta.forEach(el => { el.style.transitionDelay = '0ms'; });
+
+  // Everything starts at t=0 in parallel: backdrop fade, meta fade, close-btn fade,
+  // cassette collapse, plane unblur, header fade-in, AND cover flight back.
+  // This makes the close feel like one continuous gesture — the tape retreats INTO the
+  // cover as the cover shrinks home, rather than the old sequential cassette-then-cover.
+  heroStage.classList.remove('is-active');
+  heroStage.setAttribute('aria-hidden', 'true');
+  screen.classList.remove('is-hero');
+  plane.classList.remove('is-dimmed');
+  cassetteLayer.classList.remove('is-revealing');
+  cassetteLayer.classList.add('is-collapsing');
+
+  // Cover flight back along an arced path, with shadow transitioning hero → normal so the
+  // swap at the end is pixel-perfect (CSS --w/--h now match COVER_W/H, eliminating the
+  // earlier size jerk).
+  const tgt = getHeroTarget();
+  const srcRect = heroSourceEl.getBoundingClientRect();
+  const srcLocalCX = srcRect.left + srcRect.width / 2 - tgt.stageRect.left;
+  const srcLocalCY = srcRect.top + srcRect.height / 2 - tgt.stageRect.top;
+  const heroTx = tgt.centerX - COVER_W / 2;
+  const heroTy = tgt.centerY - COVER_H / 2;
+  const endTx = srcLocalCX - COVER_W / 2;
+  const endTy = srcLocalCY - COVER_H / 2;
+  animateCoverFlight(heroCover, {
+    startTx: heroTx, startTy: heroTy, startRot: 0,            startScale: tgt.scale,    startShadow: SHADOW_COVER_HERO,
+    endTx,           endTy,           endRot: heroSlot.rot,   endScale: heroSlot.scale, endShadow: SHADOW_COVER,
+  });
+
+  // After flight ends (t=700ms ≈ FLIGHT_DURATION + 20ms buffer), swap clone → source.
+  // Acts on the LOCAL refs captured at close-time, not the globals — so if a new openHero has
+  // already started, this timer won't trample its state. The gen check additionally prevents us
+  // from unhiding a source that the new session has just re-hidden.
+  metaTimers.push(setTimeout(() => {
+    // Always remove our clone if it's still in DOM (parentNode null = already cleaned up).
+    if (cloneAtClose && cloneAtClose.parentNode) cloneAtClose.parentNode.removeChild(cloneAtClose);
+    // Only touch source visibility + globals if no newer session has taken over.
+    if (myGen === heroGen) {
+      if (sourceAtClose) sourceAtClose.dataset.hidden = 'false';
+      heroCover = null;
+      heroSourceEl = null;
+      heroSlot = null;
+      cassetteLayer.classList.remove('is-collapsing');
+    }
+  }, FLIGHT_DURATION + 20));
+}
+
+heroClose.addEventListener('click', closeHero);
+heroStage.addEventListener('click', (e) => {
+  // tap on backdrop (not on close, cover, cassette, or meta) also closes
+  if (e.target === heroStage) closeHero();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && heroOpen) closeHero();
+});
+</script>
+</body>
+</html>
