@@ -1,0 +1,1443 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <title>Da Nang Events</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,400;0,14..32,500;0,14..32,600;0,14..32,700;0,14..32,800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #F7F6F3;
+      --card: #FDFCFB;
+      --accent: #FF5C35;
+      --accent-dim: rgba(255,92,53,0.11);
+      --text-1: #18181B;
+      --text-2: #64605C;
+      --text-3: #6E6A63;
+      --border: rgba(80,50,20,0.08);
+      --radius: 14px;
+      --max-w: 430px;
+      --ease-out:    cubic-bezier(0.23, 1, 0.32, 1);
+      --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+      --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+
+    html, body {
+      height: 100%;
+      background: #CECECE;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    .phone {
+      max-width: var(--max-w);
+      margin: 0 auto;
+      height: 100vh;
+      background: var(--bg);
+      position: relative;
+      overflow: hidden;
+    }
+
+    /* ── SCREENS ── */
+    .screen {
+      display: none;
+      position: absolute;
+      inset: 0;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ══════════════════════════════
+       SCREEN 1 — FEED
+    ══════════════════════════════ */
+    #feed-head {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      z-index: 10;
+      background: var(--bg);
+      transition: transform 300ms var(--ease-out);
+    }
+
+    .feed-top {
+      display: flex;
+      align-items: flex-end;
+      padding: max(54px, calc(env(safe-area-inset-top) + 16px)) 20px 18px;
+      transition: opacity 240ms var(--ease-out);
+      position: relative;
+      overflow: hidden;
+      min-height: 214px;
+      background: #0A141E;
+    }
+
+    .feed-top::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: url('https://d8j0ntlcm91z4.cloudfront.net/user_32OiRI4vo5oZyzYQwaNhRMbmlzu/hf_20260522_050049_ad090d3f-1bb9-4711-9cfb-48c2e4287b9b.png');
+      background-size: cover;
+      background-position: center 45%;
+      z-index: 0;
+    }
+
+    .feed-top::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(105deg, rgba(8,16,26,0.84) 0%, rgba(8,16,26,0.46) 38%, rgba(8,16,26,0.08) 68%, transparent 100%),
+        linear-gradient(to top, rgba(8,16,26,0.68) 0%, rgba(8,16,26,0.18) 32%, transparent 58%);
+      z-index: 1;
+    }
+
+    .feed-top > * { position: relative; z-index: 2; }
+
+    .app-eyebrow {
+      font-size: 11px;
+      font-weight: 700;
+      color: rgba(255,255,255,0.62);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 4px;
+    }
+
+    .app-title {
+      font-size: 28px;
+      font-weight: 800;
+      color: #FFFFFF;
+      letter-spacing: -0.7px;
+      line-height: 1;
+      text-shadow: 0 1px 14px rgba(8,16,26,0.40);
+    }
+
+    #sticky-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: var(--bg);
+      padding: 9px 12px 9px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    #sticky-date {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      transition: opacity 150ms var(--ease-out);
+      opacity: 0;
+    }
+
+    .filter-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 10px;
+      border: none;
+      background: var(--card);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: relative;
+      flex-shrink: 0;
+      transition: background 100ms var(--ease-out), transform 100ms var(--ease-out);
+    }
+    .filter-btn:active { background: #ECEAE5; transform: scale(0.95); }
+    .filter-btn svg { width: 15px; height: 15px; color: var(--text-1); }
+
+    .filter-dot {
+      position: absolute;
+      top: 5px; right: 5px;
+      width: 6px; height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+      border: 1.5px solid var(--card);
+      display: none;
+    }
+    .filter-dot.on { display: block; }
+
+    /* Active filter chips bar */
+    .chips-bar {
+      display: flex;
+      gap: 6px;
+      padding: 10px 20px;
+      overflow-x: auto;
+    }
+    .chips-bar:empty { display: none; }
+    .chips-bar::-webkit-scrollbar { display: none; }
+
+    .active-chip {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--accent-dim);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 100px;
+      border: none;
+      cursor: pointer;
+      white-space: nowrap;
+      font-family: inherit;
+      min-height: 32px;
+    }
+    .active-chip .xmark { font-size: 14px; line-height: 1; opacity: 0.7; }
+
+    /* Feed body */
+    .feed-body {
+      flex: 1;
+      overflow-y: auto;
+      padding-bottom: max(48px, calc(env(safe-area-inset-bottom) + 24px));
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+    }
+    .feed-body::-webkit-scrollbar { display: none; }
+
+    .date-group { }
+    .date-group + .date-group { margin-top: 4px; }
+
+    .group-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.9px;
+      padding: 14px 20px 8px;
+      pointer-events: none;
+    }
+
+    /* 2-column card grid */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      padding: 12px 16px 24px;
+    }
+
+    @keyframes cardEnter {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Event card */
+    .event-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      overflow: hidden;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      animation: cardEnter 280ms var(--ease-out) both;
+      transition: transform 160ms var(--ease-out);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.07), 0 4px 10px rgba(0,0,0,0.05);
+    }
+    @media (hover: hover) and (pointer: fine) {
+      .event-card:hover { transform: translateY(-2px); }
+    }
+    .event-card:active { transform: scale(0.97); }
+
+    /* Card image area (gradient + emoji) */
+    .card-img {
+      height: 108px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .card-img-emoji { font-size: 38px; }
+
+    .card-img .price-pill {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+    }
+
+    /* Card content */
+    .card-body { padding: 10px 12px 12px; }
+
+    .card-time {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+      margin-bottom: 3px;
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-1);
+      line-height: 1.3;
+      letter-spacing: -0.1px;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+
+    .card-loc {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+      font-size: 11px;
+      color: var(--text-2);
+      min-width: 0;
+    }
+    .card-loc svg { width: 10px; height: 10px; color: var(--text-3); flex-shrink: 0; }
+    .card-loc span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .price-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 100px;
+      flex-shrink: 0;
+      letter-spacing: 0.2px;
+    }
+    .price-pill.free { background: #D1FAE5; color: #059669; }
+    .price-pill.paid { background: #FFE4E1; color: #E05F4A; }
+
+    /* Empty state */
+    .empty {
+      text-align: center;
+      padding: 72px 32px;
+    }
+    .empty-emoji { font-size: 40px; margin-bottom: 14px; }
+    .empty-title { font-size: 17px; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+    .empty-sub { font-size: 14px; color: var(--text-3); }
+
+    /* ══════════════════════════════
+       SCREEN 2 — DETAIL
+    ══════════════════════════════ */
+
+    .detail-body {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      position: relative;
+    }
+    .detail-body::-webkit-scrollbar { display: none; }
+
+    /* Floating back button over hero */
+    .back-wrap {
+      position: absolute;
+      top: max(52px, calc(env(safe-area-inset-top) + 14px));
+      left: 0;
+      right: 0;
+      padding: 0 20px;
+      z-index: 10;
+      opacity: 0;
+    }
+
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(0,0,0,0.32);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      color: white;
+      border: none;
+      border-radius: 100px;
+      padding: 8px 14px 8px 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: transform 160ms var(--ease-out);
+    }
+    .back-btn:active { transform: scale(0.97); }
+    .back-btn svg { width: 16px; height: 16px; }
+
+    /* Hero gradient */
+    .detail-hero {
+      height: 230px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      position: relative;
+      view-transition-name: hero;
+    }
+
+    ::view-transition-group(hero) {
+      animation-duration: 380ms;
+      animation-timing-function: cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    ::view-transition-old(hero),
+    ::view-transition-new(hero) {
+      animation-duration: 380ms;
+    }
+    ::view-transition-old(root),
+    ::view-transition-new(root) {
+      animation: none;
+    }
+
+    .hero-emoji { font-size: 64px; }
+
+    .hero-sports  { background: linear-gradient(150deg, #0E7490 0%, #22D3EE 100%); }
+    .hero-food    { background: linear-gradient(150deg, #B45309 0%, #FCD34D 100%); }
+    .hero-social  { background: linear-gradient(150deg, #6D28D9 0%, #C084FC 100%); }
+    .hero-music   { background: linear-gradient(150deg, #1E1B4B 0%, #6366F1 100%); }
+    .hero-outdoors{ background: linear-gradient(150deg, #065F46 0%, #34D399 100%); }
+    .hero-default { background: linear-gradient(150deg, #374151 0%, #9CA3AF 100%); }
+
+    /* Detail content */
+    .detail-content {
+      padding: 22px 20px max(80px, calc(env(safe-area-inset-bottom) + 56px));
+      animation: cardEnter 340ms var(--ease-out) 40ms both;
+    }
+
+    .detail-when {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      margin-bottom: 8px;
+    }
+
+    .detail-title {
+      font-size: 27px;
+      font-weight: 800;
+      color: var(--text-1);
+      letter-spacing: -0.6px;
+      line-height: 1.2;
+      margin-bottom: 14px;
+    }
+
+    .detail-tag-row {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 24px;
+    }
+
+    .tag {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 5px 12px;
+      border-radius: 100px;
+    }
+    .tag.cat { background: var(--bg); color: var(--text-2); }
+    .tag.free { background: #D1FAE5; color: #059669; }
+    .tag.paid { background: #FFE4E1; color: #E05F4A; }
+
+    /* Meta card */
+    .meta-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      overflow: hidden;
+      margin-bottom: 20px;
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+    .meta-row:last-child { border-bottom: none; }
+
+    .meta-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: var(--accent-dim);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .meta-icon-box svg { width: 16px; height: 16px; color: var(--accent); }
+
+    .meta-info { flex: 1; min-width: 0; }
+    .meta-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .meta-val {
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-1);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .meta-val a { color: var(--accent); text-decoration: none; }
+
+    /* About section */
+    .about-label {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 10px;
+    }
+
+    .about-text {
+      font-size: 15px;
+      line-height: 1.72;
+      color: var(--text-2);
+      margin-bottom: 24px;
+    }
+
+    /* Source card */
+    .source-card {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .source-icon-box {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      background: #E7F7EC;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      flex-shrink: 0;
+    }
+    .source-info .source-lbl {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 2px;
+    }
+    .source-info .source-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-1);
+    }
+
+    /* ══════════════════════════════
+       FILTER SHEET
+    ══════════════════════════════ */
+    .overlay {
+      position: fixed;
+      inset: 0;
+      max-width: var(--max-w);
+      margin: 0 auto;
+      background: rgba(0,0,0,0.48);
+      z-index: 300;
+      display: none;
+      align-items: flex-end;
+      opacity: 0;
+      transition: opacity 300ms var(--ease-out);
+    }
+    .overlay.open { display: flex; opacity: 1; }
+
+    .sheet {
+      width: 100%;
+      background: var(--bg);
+      border-radius: 24px 24px 0 0;
+      padding: 12px 0 max(40px, calc(env(safe-area-inset-bottom) + 20px));
+      transform: translateY(100%);
+      transition: transform 400ms var(--ease-drawer);
+      max-height: 88vh;
+      overflow-y: auto;
+    }
+    .sheet::-webkit-scrollbar { display: none; }
+    .overlay.open .sheet { transform: translateY(0); }
+
+    .sheet-handle {
+      width: 36px;
+      height: 4px;
+      background: #C8C3BC;
+      border-radius: 2px;
+      margin: 0 auto 18px;
+    }
+
+    .sheet-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sheet-heading { font-size: 17px; font-weight: 800; color: var(--text-1); }
+
+    .clear-all-btn {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--accent);
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .sheet-scroll { padding: 16px 20px 20px; }
+
+    /* Search box */
+    .sheet-search {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--card);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin-bottom: 16px;
+    }
+    .sheet-search svg { width: 16px; height: 16px; color: var(--text-3); flex-shrink: 0; }
+    .sheet-search input {
+      border: none;
+      background: none;
+      font-size: 15px;
+      color: var(--text-1);
+      flex: 1;
+      outline: none;
+      font-family: inherit;
+    }
+    .sheet-search input::placeholder { color: var(--text-3); }
+
+    /* Filter section card */
+    .fsection {
+      background: var(--card);
+      border-radius: var(--radius);
+      padding: 16px;
+      margin-bottom: 10px;
+    }
+    .fsection-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-1);
+      margin-bottom: 12px;
+    }
+    .fchips { display: flex; flex-wrap: wrap; gap: 8px; }
+
+    .fchip {
+      padding: 7px 14px;
+      border-radius: 100px;
+      border: 1.5px solid var(--border);
+      background: var(--bg);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-2);
+      cursor: pointer;
+      min-height: 36px;
+      display: inline-flex;
+      align-items: center;
+      transition: background 120ms var(--ease-out), color 120ms var(--ease-out), border-color 120ms var(--ease-out);
+      font-family: inherit;
+    }
+    .fchip.on {
+      border-color: var(--accent);
+      background: var(--accent-dim);
+      color: var(--accent);
+    }
+
+    /* Show button */
+    .sheet-footer { padding: 8px 20px 0; }
+
+    .show-btn {
+      width: 100%;
+      padding: 17px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: -0.2px;
+      transition: transform 160ms var(--ease-out);
+    }
+    .show-btn:active { transform: scale(0.97); }
+
+    :focus-visible {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+      border-radius: 4px;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        transition-duration: 0.01ms !important;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- ══ SCREEN 1: FEED ══ -->
+  <div class="screen active" id="screen-feed">
+    <div id="feed-head">
+      <div class="feed-top">
+        <div>
+          <div class="app-eyebrow">Da Nang · Vietnam</div>
+          <h1 class="app-title">Events</h1>
+        </div>
+      </div>
+      <div id="sticky-bar">
+        <span id="sticky-date"></span>
+        <button class="filter-btn" onclick="openSheet()" aria-label="Filter events">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="4" y1="6" x2="20" y2="6"/>
+            <line x1="8" y1="12" x2="16" y2="12"/>
+            <line x1="11" y1="18" x2="13" y2="18"/>
+          </svg>
+          <span class="filter-dot" id="fdot"></span>
+        </button>
+      </div>
+    </div>
+    <div class="feed-body" id="feed-body">
+      <div class="chips-bar" id="chips-bar"></div>
+      <div id="feed-groups"></div>
+    </div>
+  </div>
+
+  <!-- ══ SCREEN 2: DETAIL ══ -->
+  <div class="screen" id="screen-detail">
+    <div class="detail-body" id="detail-body">
+      <div class="back-wrap">
+        <button class="back-btn" onclick="showScreen('feed')">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+          Back
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ FILTER SHEET ══ -->
+  <div class="overlay" id="overlay" onclick="handleOverlay(event)">
+    <div class="sheet">
+      <div class="sheet-handle"></div>
+      <div class="sheet-top">
+        <span class="sheet-heading">Filter</span>
+        <button class="clear-all-btn" onclick="clearAll()">Clear all</button>
+      </div>
+      <div class="sheet-scroll">
+        <div class="sheet-search">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input id="search-input" type="text" placeholder="Search events or places…" oninput="updateCount()" />
+        </div>
+
+        <div class="fsection">
+          <div class="fsection-title">Category</div>
+          <div class="fchips" id="cat-chips"></div>
+        </div>
+
+        <div class="fsection">
+          <div class="fsection-title">Price</div>
+          <div class="fchips" id="price-chips"></div>
+        </div>
+      </div>
+      <div class="sheet-footer">
+        <button class="show-btn" id="show-btn" onclick="applyFilters()">Show events</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script>
+/* ── DATA ──────────────────────────────────────── */
+const TODAY = '2026-05-20';
+
+const EVENTS = [
+  /* ── TODAY: May 20 ── */
+  {
+    id: 1,
+    title: 'Morning Yoga Flow',
+    date: '2026-05-20', time: '6:30 AM',
+    location: 'Non Nuoc Beach', mapQ: 'Non Nuoc Beach Da Nang',
+    category: 'Sports', paid: false,
+    source: 'Da Nang Wellness',
+    description: 'Start your day with a gentle yoga flow by the ocean. All levels welcome. Bring your own mat if you have one — extras available. Led by a certified instructor.'
+  },
+  {
+    id: 2,
+    title: 'Vietnamese Cooking Class',
+    date: '2026-05-20', time: '10:00 AM',
+    location: 'Han Market area', mapQ: 'Han Market Da Nang',
+    category: 'Food', paid: true,
+    source: 'Da Nang Foodies',
+    description: 'Learn 3 traditional dishes with a local chef. Starts with a market tour to pick fresh ingredients, then 2.5 hours of hands-on cooking and eating together. 350,000 VND per person.'
+  },
+  {
+    id: 3,
+    title: 'Coffee Cupping Workshop',
+    date: '2026-05-20', time: '2:00 PM',
+    location: '43 Factory Coffee, Hai Phong', mapQ: '43 Factory Coffee Roaster Da Nang',
+    category: 'Food', paid: true,
+    source: 'Da Nang Foodies',
+    description: 'Learn to taste and evaluate Vietnamese single-origin coffee with a specialty roaster. Covers aroma, body, and flavour notes. 200,000 VND includes all tastings and a bag of beans to take home.'
+  },
+  {
+    id: 4,
+    title: 'Sunset Paddle Boarding',
+    date: '2026-05-20', time: '4:30 PM',
+    location: 'My Khe Beach', mapQ: 'My Khe Beach Da Nang',
+    category: 'Outdoors', paid: true,
+    source: 'Da Nang Water Sports',
+    description: 'Guided stand-up paddle boarding session during golden hour. Board and paddle provided. No experience needed — instructor gives a quick land lesson before you hit the water. 250,000 VND.'
+  },
+  {
+    id: 5,
+    title: 'Trivia Night',
+    date: '2026-05-20', time: '7:30 PM',
+    location: 'The Brewhouse, An Thuong', mapQ: 'Brewhouse Da Nang',
+    category: 'Social', paid: false,
+    source: 'Da Nang Expats',
+    description: 'Weekly pub trivia with 6 rounds covering pop culture, history, sport, and Da Nang local knowledge. Teams of up to 6. Winners get a bar tab. Free to play, just show up.'
+  },
+
+  /* ── TOMORROW: May 21 ── */
+  {
+    id: 6,
+    title: 'Open Water Swim Clinic',
+    date: '2026-05-21', time: '7:00 AM',
+    location: 'My Khe Beach, North End', mapQ: 'My Khe Beach Da Nang',
+    category: 'Sports', paid: false,
+    source: 'Da Nang Swimmers',
+    description: 'Coached open water session for intermediate swimmers. Focus on sighting, pacing, and dealing with waves. Meets at the north lifeguard tower. Bring your own goggles and cap.'
+  },
+  {
+    id: 7,
+    title: 'Rock Climbing Intro',
+    date: '2026-05-21', time: '5:00 PM',
+    location: 'Climbup Gym, Le Duan', mapQ: 'Climbup Da Nang',
+    category: 'Sports', paid: true,
+    source: 'Da Nang Active',
+    description: 'First time on the wall? This intro session covers footwork, body positioning, and basic route reading. All gear provided. 150,000 VND includes entry and equipment rental.'
+  },
+  {
+    id: 8,
+    title: 'Nomads Meetup',
+    date: '2026-05-21', time: '6:00 PM',
+    location: 'An Thuong Rooftop Bar', mapQ: 'An Thuong Da Nang rooftop',
+    category: 'Social', paid: false,
+    source: 'Da Nang Nomads',
+    description: 'Bi-weekly meetup for remote workers and digital nomads. Good for swapping co-working tips, finding collab partners, or just making friends in a new city. No agenda — just good vibes.'
+  },
+  {
+    id: 9,
+    title: 'Night Market Food Walk',
+    date: '2026-05-21', time: '6:30 PM',
+    location: 'Helio Night Market', mapQ: 'Helio Night Market Da Nang',
+    category: 'Food', paid: false,
+    source: 'Da Nang Foodies',
+    description: 'Self-guided group walk through Helio Night Market with a local foodie pointing out the best stalls. Try Banh Xeo, Nem Lui, and fresh sugarcane juice. Bring cash — about 100,000 VND for snacks.'
+  },
+  {
+    id: 10,
+    title: 'Acoustic Open Mic',
+    date: '2026-05-21', time: '8:00 PM',
+    location: 'Luna Pub, Tran Phu', mapQ: 'Luna Pub Da Nang',
+    category: 'Music', paid: false,
+    source: 'Da Nang Music Scene',
+    description: 'Open mic night welcoming performers of all levels — originals, covers, poetry, stand-up. Sign up from 7:30 PM. Audience also welcome, no cover charge. Great spot to discover local talent.'
+  },
+
+  /* ── FRIDAY: May 22 ── */
+  {
+    id: 11,
+    title: 'Beach Run Club',
+    date: '2026-05-22', time: '6:30 AM',
+    location: 'My Khe Beach, central', mapQ: 'My Khe Beach Da Nang',
+    category: 'Sports', paid: false,
+    source: 'Da Nang Runners',
+    description: 'Casual Friday morning beach run, 5km along the shoreline. All paces welcome — no one gets left behind. Ends with a group stretch and coffee at a nearby cafe. Free, just show up.'
+  },
+  {
+    id: 12,
+    title: 'Banh Mi & Beer Pairing',
+    date: '2026-05-22', time: '5:00 PM',
+    location: 'Mango Mango, An Thuong', mapQ: 'Mango Mango Da Nang',
+    category: 'Food', paid: true,
+    source: 'Da Nang Foodies',
+    description: 'A fun tasting session pairing 4 regional Banh Mi styles with local craft beers. Hosted by a food blogger and a craft brewery rep. 300,000 VND per person, groups welcome.'
+  },
+  {
+    id: 13,
+    title: 'Rooftop Happy Hour',
+    date: '2026-05-22', time: '5:30 PM',
+    location: 'Sky 36, Novotel Tower', mapQ: 'Sky 36 Da Nang',
+    category: 'Social', paid: false,
+    source: 'Da Nang Expats',
+    description: 'Informal Friday social on the highest rooftop bar in Da Nang. No entry fee, drinks at bar price. Great city and ocean views. Come straight from work — smart casual is fine.'
+  },
+  {
+    id: 14,
+    title: 'Indie Music Night',
+    date: '2026-05-22', time: '8:00 PM',
+    location: 'Envy Bar, Pham Van Dong', mapQ: 'Envy Bar Da Nang',
+    category: 'Music', paid: true,
+    source: 'Da Nang Music Scene',
+    description: 'Live indie from 3 local and visiting acts. Doors 7:30 PM. 100,000 VND cover includes one welcome drink. Genre mix: indie folk, dream pop, and lo-fi.'
+  },
+
+  /* ── SATURDAY: May 23 ── */
+  {
+    id: 15,
+    title: 'Hoi An Day Trip',
+    date: '2026-05-23', time: '8:00 AM',
+    location: 'Meeting at Dragon Bridge', mapQ: 'Dragon Bridge Da Nang',
+    category: 'Outdoors', paid: true,
+    source: 'Da Nang Explorers',
+    description: 'Group day trip to Hoi An Ancient Town by motorbike convoy — 30 mins each way through the coastal highway. Explore the old town, eat lunch at a riverside restaurant, and ride back at sunset. 200,000 VND fuel share.'
+  },
+  {
+    id: 16,
+    title: 'Beach Volleyball Tournament',
+    date: '2026-05-23', time: '2:00 PM',
+    location: 'My Khe Beach, South Zone', mapQ: 'My Khe Beach Da Nang',
+    category: 'Sports', paid: false,
+    source: 'Da Nang Expats',
+    description: 'Friendly 4v4 tournament with 6 teams. Register a full team or join the pool to be assigned one. Winners get bragging rights and a round of coconuts. Free entry, BYO water and sunscreen.'
+  },
+  {
+    id: 17,
+    title: 'Street Art Walking Tour',
+    date: '2026-05-23', time: '4:00 PM',
+    location: 'Starting at Con Market', mapQ: 'Con Market Da Nang',
+    category: 'Outdoors', paid: false,
+    source: 'Da Nang Creatives',
+    description: 'A 90-minute walk through the murals and street art hidden around central Da Nang, led by a local artist. Learn about the stories behind each piece and the artists who made them. Free, all welcome.'
+  },
+  {
+    id: 18,
+    title: 'Jazz & Cocktails Night',
+    date: '2026-05-23', time: '8:30 PM',
+    location: 'Brilliant Hotel Lounge', mapQ: 'Brilliant Hotel Da Nang',
+    category: 'Music', paid: true,
+    source: 'Da Nang Music Scene',
+    description: 'Live jazz quartet in an intimate lounge setting. Table reservation recommended. 150,000 VND entry includes one signature cocktail. Sets run 8:30–11:30 PM with a short break.'
+  },
+
+  /* ── SUNDAY: May 24 ── */
+  {
+    id: 19,
+    title: 'Marble Mountains Photo Walk',
+    date: '2026-05-24', time: '7:00 AM',
+    location: 'Marble Mountains, Ngu Hanh Son', mapQ: 'Marble Mountains Da Nang',
+    category: 'Outdoors', paid: false,
+    source: 'Da Nang Photographers',
+    description: 'A guided photography walk at golden hour through the Marble Mountains. Perfect for landscape, street, and architecture shots. All camera types welcome — smartphones included.'
+  },
+  {
+    id: 20,
+    title: 'Kayaking at Son Tra',
+    date: '2026-05-24', time: '8:00 AM',
+    location: 'Son Tra Peninsula Jetty', mapQ: 'Son Tra Peninsula Da Nang',
+    category: 'Outdoors', paid: true,
+    source: 'Da Nang Water Sports',
+    description: 'Two-hour kayaking tour around the Son Tra peninsula with views of coral reefs and the occasional monkey sighting on shore. Kayaks, paddles, and life jackets provided. 350,000 VND per person.'
+  },
+  {
+    id: 21,
+    title: 'Sunday Brunch Social',
+    date: '2026-05-24', time: '10:30 AM',
+    location: 'Waterfront Restaurant, Bach Dang', mapQ: 'Bach Dang Da Nang waterfront',
+    category: 'Social', paid: false,
+    source: 'Da Nang Nomads',
+    description: 'Weekly brunch meetup on the Han River waterfront. No fixed agenda — just food, coffee, and good conversation. Split the bill however you like. A great way to meet people before the week starts.'
+  },
+  {
+    id: 22,
+    title: 'Sunset Yoga on the Beach',
+    date: '2026-05-24', time: '5:00 PM',
+    location: 'My Khe Beach, central', mapQ: 'My Khe Beach Da Nang',
+    category: 'Sports', paid: false,
+    source: 'Da Nang Wellness',
+    description: 'Gentle vinyasa flow timed to finish as the sun hits the horizon. All levels welcome. Bring your own mat — the instructor has a few spares. Free community class, donations to the instructor appreciated.'
+  },
+  {
+    id: 23,
+    title: 'Da Nang Street Food Tour',
+    date: '2026-05-24', time: '6:00 PM',
+    location: 'Starting at Dragon Bridge', mapQ: 'Dragon Bridge Da Nang',
+    category: 'Food', paid: true,
+    source: 'Da Nang Foodies',
+    description: "Walk and eat through Da Nang's best street food — 6-8 stops including Mi Quang, Banh Mi, and fresh seafood. Led by a local guide who knows every hidden spot. 500,000 VND per person."
+  },
+
+  /* ── MONDAY: May 25 ── */
+  {
+    id: 24,
+    title: 'Monday Morning Swim',
+    date: '2026-05-25', time: '7:00 AM',
+    location: 'Olympic Pool, Ngo Quyen', mapQ: 'Olympic Pool Da Nang',
+    category: 'Sports', paid: false,
+    source: 'Da Nang Swimmers',
+    description: 'Casual lap swim session to kick off the week. The pool opens at 6:30 AM — meet at the entrance at 7:00. All speeds and styles welcome. Entry fee ~20,000 VND paid individually at the gate.'
+  },
+  {
+    id: 25,
+    title: 'Pho Making Masterclass',
+    date: '2026-05-25', time: '11:00 AM',
+    location: 'Local Home Kitchen, Hai Chau', mapQ: 'Hai Chau District Da Nang',
+    category: 'Food', paid: true,
+    source: 'Da Nang Foodies',
+    description: 'Learn to build a proper pho broth from scratch with a home cook who has been making it for 30 years. Small class of 6 max. 400,000 VND covers ingredients, the cooking session, and eating everything you make.'
+  },
+  {
+    id: 26,
+    title: 'Language Exchange Café',
+    date: '2026-05-25', time: '4:00 PM',
+    location: 'Cong Ca Phe, Tran Phu', mapQ: 'Cong Caphe Tran Phu Da Nang',
+    category: 'Social', paid: false,
+    source: 'Da Nang Language Learners',
+    description: 'Practice Vietnamese, English, or any language in a friendly café setting. Paired conversations, group tables, and a relaxed atmosphere. Just show up and be open to chatting.'
+  },
+  {
+    id: 27,
+    title: 'Mindfulness & Meditation',
+    date: '2026-05-25', time: '6:30 PM',
+    location: 'The Yoga Room, Le Duan', mapQ: 'Le Duan street Da Nang',
+    category: 'Sports', paid: false,
+    source: 'Da Nang Wellness',
+    description: 'Guided meditation and breathing exercises to wind down the workday. 45 minutes, no prior experience needed. Cushions and mats provided. Drop-in, free. Donations to the space are welcome.'
+  }
+];
+
+const CATS   = ['All','Sports','Food','Social','Music','Outdoors'];
+const PRICES = ['All','Free','Paid'];
+
+const HERO_CLASS = {
+  Sports: 'hero-sports', Food: 'hero-food', Social: 'hero-social',
+  Music: 'hero-music', Outdoors: 'hero-outdoors'
+};
+
+const HERO_EMOJI = {
+  Sports: '🏖️', Food: '🍜', Social: '🥂', Music: '🎵', Outdoors: '🏔️'
+};
+
+/* ── STATE ─────────────────────────────────────── */
+let filterCat  = 'All';
+let filterPrice= 'All';
+let searchQ    = '';
+let lastScrollTop = 0;
+let titleH      = 0;
+let titleHidden = false;
+
+// Temp state inside the sheet (not committed until Apply)
+let tmpCat   = 'All';
+let tmpPrice = 'All';
+let currentEventId = null;
+
+/* ── UTILS ─────────────────────────────────────── */
+function parseDate(s) { return new Date(s + 'T00:00:00'); }
+
+function diffDays(dateStr) {
+  return Math.round((parseDate(dateStr) - parseDate(TODAY)) / 86400000);
+}
+
+function groupLabel(dateStr) {
+  const d = diffDays(dateStr);
+  if (d === 0) return 'Today';
+  if (d === 1) return 'Tomorrow';
+  return parseDate(dateStr).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+}
+
+function shortDate(dateStr) {
+  return parseDate(dateStr).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+}
+
+/* ── FILTERING ─────────────────────────────────── */
+function getFiltered({ cat = filterCat, price = filterPrice, q = searchQ } = {}) {
+  return EVENTS.filter(e => {
+    if (cat !== 'All'   && e.category !== cat)  return false;
+    if (price === 'Free' && e.paid)  return false;
+    if (price === 'Paid' && !e.paid) return false;
+    if (q) {
+      const lq = q.toLowerCase();
+      if (!e.title.toLowerCase().includes(lq) && !e.location.toLowerCase().includes(lq)) return false;
+    }
+    return true;
+  });
+}
+
+/* ── SCREENS ───────────────────────────────────── */
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+}
+
+/* ── STICKY DATE + SCROLL HANDLER ──────────────── */
+function updateStickyDate() {
+  const body = document.getElementById('feed-body');
+  const overlay = document.getElementById('sticky-date');
+  if (!overlay) return;
+  const labels = [...body.querySelectorAll('.group-label')];
+  if (!labels.length) return;
+
+  const barEl = document.getElementById('sticky-bar');
+  const barH = barEl ? barEl.offsetHeight : 44;
+  const scrollTop = body.scrollTop;
+
+  // Active = last label whose top has reached the bar's bottom
+  let active = labels[0];
+  for (const lbl of labels) {
+    if (lbl.offsetTop <= scrollTop + barH) active = lbl;
+    else break;
+  }
+
+  // Hide sticky date while the inline label is still below the bar
+  const labelBehindBar = active.offsetTop < scrollTop + barH;
+  const newText = active.textContent.trim();
+
+  if (!labelBehindBar) {
+    // Inline label is visible — pre-load text but hide overlay
+    overlay.textContent = newText;
+    overlay.dataset.current = newText;
+    overlay.style.opacity = '0';
+    return;
+  }
+
+  // Label scrolled past — show sticky date with crossfade
+  if (overlay.dataset.current === newText) {
+    if (overlay.style.opacity !== '1') overlay.style.opacity = '1';
+    return;
+  }
+
+  overlay.style.opacity = '0';
+  setTimeout(() => {
+    overlay.textContent = newText;
+    overlay.dataset.current = newText;
+    overlay.style.opacity = '1';
+  }, 120);
+}
+
+function onFeedScroll() {
+  const body    = document.getElementById('feed-body');
+  const feedHead = document.getElementById('feed-head');
+  const feedTop  = feedHead && feedHead.querySelector('.feed-top');
+  const scrollTop = body.scrollTop;
+  const delta   = scrollTop - lastScrollTop;
+  const THRESHOLD = 4;
+
+  if (feedHead && feedTop) {
+    if (scrollTop <= 8) {
+      if (titleHidden) {
+        titleHidden = false;
+        feedHead.style.transform = 'translateY(0)';
+        feedTop.style.opacity = '1';
+      }
+    } else if (delta > THRESHOLD && !titleHidden) {
+      titleHidden = true;
+      feedHead.style.transform = `translateY(-${titleH}px)`;
+      feedTop.style.opacity = '0';
+    } else if (delta < -THRESHOLD && titleHidden) {
+      titleHidden = false;
+      feedHead.style.transform = 'translateY(0)';
+      feedTop.style.opacity = '1';
+    }
+  }
+
+  lastScrollTop = scrollTop;
+  updateStickyDate();
+}
+
+/* ── FEED ──────────────────────────────────────── */
+function renderFeed() {
+  const events   = getFiltered();
+  const groupsEl = document.getElementById('feed-groups');
+  const chipsBar = document.getElementById('chips-bar');
+  const fdot     = document.getElementById('fdot');
+
+  // Active filter chips
+  chipsBar.innerHTML = '';
+  const hasFilters = filterCat !== 'All' || filterPrice !== 'All' || searchQ;
+  fdot.classList.toggle('on', hasFilters);
+
+  if (filterCat !== 'All') {
+    chipsBar.innerHTML += `<button class="active-chip" onclick="removeCat()">
+      ${filterCat} <span class="xmark">×</span></button>`;
+  }
+  if (filterPrice !== 'All') {
+    chipsBar.innerHTML += `<button class="active-chip" onclick="removePrice()">
+      ${filterPrice} <span class="xmark">×</span></button>`;
+  }
+  if (searchQ) {
+    chipsBar.innerHTML += `<button class="active-chip" onclick="removeSearch()">
+      "${searchQ}" <span class="xmark">×</span></button>`;
+  }
+
+  if (!events.length) {
+    groupsEl.innerHTML = `<div class="empty">
+      <div class="empty-emoji">📭</div>
+      <div class="empty-title">No events found</div>
+      <div class="empty-sub">Try adjusting your filters</div>
+    </div>`;
+    updateStickyDate();
+    return;
+  }
+
+  // Group by date label
+  const groups = {};
+  events.forEach(e => {
+    const lbl = groupLabel(e.date);
+    if (!groups[lbl]) groups[lbl] = [];
+    groups[lbl].push(e);
+  });
+
+  groupsEl.innerHTML = Object.entries(groups).map(([lbl, grp]) => `
+    <div class="date-group">
+      <div class="group-label">${lbl}</div>
+      <div class="cards-grid">${grp.map(cardHTML).join('')}</div>
+    </div>
+  `).join('');
+
+  updateStickyDate();
+}
+
+function cardHTML(e, i) {
+  const heroClass = HERO_CLASS[e.category] || 'hero-default';
+  const emoji     = HERO_EMOJI[e.category] || '📅';
+  const priceClass = e.paid ? 'paid' : 'free';
+  const priceLabel = e.paid ? 'Paid' : 'Free';
+  return `
+    <div class="event-card" data-id="${e.id}" style="animation-delay:${i * 40}ms" onclick="openDetail(${e.id})">
+      <div class="card-img ${heroClass}">
+        <span class="card-img-emoji">${emoji}</span>
+        <span class="price-pill ${priceClass}">${priceLabel}</span>
+      </div>
+      <div class="card-body">
+        <div class="card-time">${e.time}</div>
+        <div class="card-title">${e.title}</div>
+        <div class="card-loc">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+            <circle cx="12" cy="10" r="3"/>
+          </svg>
+          <span>${e.location}</span>
+        </div>
+      </div>
+    </div>`;
+}
+
+/* ── FILTER CHIPS REMOVAL ──────────────────────── */
+function removeCat()    { filterCat = 'All';  tmpCat   = 'All';  renderFeed(); }
+function removePrice()  { filterPrice = 'All'; tmpPrice = 'All';  renderFeed(); }
+function removeSearch() { searchQ = '';        document.getElementById('search-input').value = ''; renderFeed(); }
+
+/* ── DETAIL ────────────────────────────────────── */
+function goBack() {
+  const cardImg = document.querySelector(`.event-card[data-id="${currentEventId}"] .card-img`);
+  if (cardImg) cardImg.style.viewTransitionName = 'hero';
+
+  const stickyDate = document.getElementById('sticky-date');
+
+  const run = () => {
+    showScreen('feed');
+    document.querySelectorAll('.event-card').forEach(c => c.style.animation = 'none');
+  };
+
+  if (document.startViewTransition) {
+    if (stickyDate) { stickyDate.style.transition = 'none'; stickyDate.style.opacity = '0'; }
+
+    const t = document.startViewTransition(run);
+    t.finished.then(() => {
+      if (cardImg) cardImg.style.viewTransitionName = '';
+      if (stickyDate) stickyDate.style.transition = 'opacity 150ms var(--ease-out)';
+      updateStickyDate();
+    });
+  } else {
+    run();
+    if (cardImg) cardImg.style.viewTransitionName = '';
+    updateStickyDate();
+  }
+}
+
+function openDetail(id) {
+  currentEventId = id;
+  const e = EVENTS.find(x => x.id === id);
+  const heroClass = HERO_CLASS[e.category] || 'hero-default';
+  const emoji     = HERO_EMOJI[e.category] || '📅';
+  const mapsUrl   = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(e.mapQ)}`;
+
+  const cardImg = document.querySelector(`.event-card[data-id="${id}"] .card-img`);
+  if (cardImg) cardImg.style.viewTransitionName = 'hero';
+
+  const run = () => {
+    document.getElementById('detail-body').innerHTML = `
+    <div class="back-wrap">
+      <button class="back-btn" onclick="goBack()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="15 18 9 12 15 6"/>
+        </svg>
+        Back
+      </button>
+    </div>
+
+    <div class="detail-hero ${heroClass}">
+      <div class="hero-emoji">${emoji}</div>
+    </div>
+
+    <div class="detail-content">
+      <div class="detail-when">${shortDate(e.date)} · ${e.time}</div>
+      <div class="detail-title">${e.title}</div>
+      <div class="detail-tag-row">
+        <span class="tag cat">${e.category}</span>
+        <span class="tag ${e.paid ? 'paid' : 'free'}">${e.paid ? 'Paid' : 'Free'}</span>
+      </div>
+
+      <div class="meta-card">
+        <div class="meta-row">
+          <div class="meta-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/>
+              <line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/>
+              <line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+          </div>
+          <div class="meta-info">
+            <div class="meta-lbl">Date & Time</div>
+            <div class="meta-val">${shortDate(e.date)} at ${e.time}</div>
+          </div>
+        </div>
+        <div class="meta-row">
+          <div class="meta-icon-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+              <circle cx="12" cy="10" r="3"/>
+            </svg>
+          </div>
+          <div class="meta-info">
+            <div class="meta-lbl">Location</div>
+            <div class="meta-val"><a href="${mapsUrl}" target="_blank">${e.location} ↗</a></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-label">About this event</div>
+      <div class="about-text">${e.description}</div>
+
+      <div class="source-card">
+        <div class="source-icon-box">💬</div>
+        <div class="source-info">
+          <div class="source-lbl">WhatsApp Group</div>
+          <div class="source-name">${e.source}</div>
+        </div>
+      </div>
+    </div>
+  `;
+    showScreen('detail');
+  };
+
+  if (document.startViewTransition) {
+    const t = document.startViewTransition(run);
+    t.finished.then(() => {
+      if (cardImg) cardImg.style.viewTransitionName = '';
+      const backWrap = document.getElementById('screen-detail').querySelector('.back-wrap');
+      if (backWrap) backWrap.animate(
+        [{ opacity: 0, transform: 'translateY(8px)' }, { opacity: 1, transform: 'translateY(0)' }],
+        { duration: 280, easing: 'cubic-bezier(0.23, 1, 0.32, 1)', fill: 'forwards' }
+      );
+    });
+  } else {
+    run();
+    if (cardImg) cardImg.style.viewTransitionName = '';
+    const backWrap = document.getElementById('screen-detail').querySelector('.back-wrap');
+    if (backWrap) backWrap.style.opacity = '1';
+  }
+}
+
+/* ── FILTER SHEET ──────────────────────────────── */
+function openSheet() {
+  tmpCat   = filterCat;
+  tmpPrice = filterPrice;
+  document.getElementById('search-input').value = searchQ;
+  renderSheetChips();
+  updateCount();
+
+  const ov = document.getElementById('overlay');
+  ov.style.display = 'flex';
+  requestAnimationFrame(() => ov.classList.add('open'));
+}
+
+function closeSheet() {
+  const ov = document.getElementById('overlay');
+  ov.classList.remove('open');
+  setTimeout(() => { ov.style.display = 'none'; }, 320);
+}
+
+function handleOverlay(e) {
+  if (e.target === document.getElementById('overlay')) closeSheet();
+}
+
+function renderSheetChips() {
+  document.getElementById('cat-chips').innerHTML = CATS.map(c =>
+    `<button class="fchip ${tmpCat === c ? 'on' : ''}" onclick="pickCat('${c}')">${c}</button>`
+  ).join('');
+
+  document.getElementById('price-chips').innerHTML = PRICES.map(p =>
+    `<button class="fchip ${tmpPrice === p ? 'on' : ''}" onclick="pickPrice('${p}')">${p}</button>`
+  ).join('');
+}
+
+function pickCat(c)   { tmpCat   = c; renderSheetChips(); updateCount(); }
+function pickPrice(p) { tmpPrice = p; renderSheetChips(); updateCount(); }
+
+function updateCount() {
+  const q = document.getElementById('search-input').value.trim();
+  const n = getFiltered({ cat: tmpCat, price: tmpPrice, q }).length;
+  document.getElementById('show-btn').textContent =
+    n === 0 ? 'No events match' : `Show ${n} event${n !== 1 ? 's' : ''}`;
+}
+
+function applyFilters() {
+  filterCat   = tmpCat;
+  filterPrice = tmpPrice;
+  searchQ     = document.getElementById('search-input').value.trim();
+  closeSheet();
+  setTimeout(renderFeed, 60);
+}
+
+function clearAll() {
+  tmpCat = 'All'; tmpPrice = 'All';
+  document.getElementById('search-input').value = '';
+  renderSheetChips();
+  updateCount();
+}
+
+/* ── INIT ──────────────────────────────────────── */
+(function init() {
+  const feedBody = document.getElementById('feed-body');
+  feedBody.addEventListener('scroll', onFeedScroll, { passive: true });
+
+  renderFeed();
+
+  requestAnimationFrame(() => {
+    const feedHead = document.getElementById('feed-head');
+    const feedTop  = feedHead && feedHead.querySelector('.feed-top');
+    if (feedHead) {
+      titleH = feedTop ? feedTop.offsetHeight : 0;
+      feedBody.style.paddingTop = feedHead.offsetHeight + 'px';
+    }
+    updateStickyDate();
+  });
+})();
+</script>
+</body>
+</html>
