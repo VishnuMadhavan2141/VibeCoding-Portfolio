@@ -5,6 +5,7 @@ Live site: **https://vishnumadhavan2141.github.io/VibeCoding-Portfolio/**
 
 ## Projects
 
+- **[Interactive Movie Grid](projects/interactive-grid/index.html)** — A WebGL wall of film posters that scale and bloom into colour near your cursor, opening into a frosted, liquid-glass detail page via a shared-element transition.
 - **[REWIND](projects/rewind/index.html)** — Turns your screenshots of movie recommendations into a shelf of VHS tapes you can flip through.
 - **[Movie Bookmarker](projects/movie-bookmarker/index.html)** — A draggable 2D plane of real movie posters with shared-element hero transitions into each title.
 - **[WhatsApp Event Extractor](projects/whatsapp-extractor/index.html)** — Node + Claude API tool that turns messy chat messages from community groups into structured event JSON.
